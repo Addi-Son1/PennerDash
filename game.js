@@ -150,6 +150,12 @@ if (menuEntries && menuEntries.length) {
   });
 }
 
+let audioCtx = null;
+let soundEnabled = true;
+let soundVolume = 0.8;
+
+// Hintergrundmusik (einfacher Ambient-Ton über WebAudio)
+
 // Sound-Toggle
 if (soundToggleBtn) {
   // Lautstärke-Slider
@@ -188,10 +194,6 @@ if (locationInfoToggle && locationInfoBody) {
 function xpNeededForLevel(level) {
   return 50 + (level - 1) * 35;
 }
-
-let audioCtx = null;
-let soundEnabled = true;
-let soundVolume = 0.8;
 
 // Hintergrundmusik (einfacher Ambient-Ton über WebAudio)
 let musicEnabled = true;
