@@ -79,6 +79,8 @@ let currentLocation = "park";
 let isInside = false;
 let currentShop = null;
 
+let soundVolume = 0.8;
+
 const ENERGY_MAX = 100;
 const HUNGER_MIN = 0;
 const HUNGER_MAX = 100;
@@ -191,12 +193,20 @@ function xpNeededForLevel(level) {
 
 let audioCtx = null;
 let soundEnabled = true;
-let soundVolume = 0.8;
 
-// Hintergrundmusik (einfacher Ambient-Ton über WebAudio)
+// Hintergrundmusik (ortsabhängige Ambient-Sounds je nach Ort)
 let musicEnabled = true;
-let musicOsc = null;
-let musicGain = null;
+let locationMusic = null;
+let locationMusicLocation = null;
+
+const LOCATION_MUSIC_FILES = {
+  park: null,
+  station: "static/sfx/city.mp3",
+  bakery: null,
+  deposit: null,
+  city: "static/sfx/city.mp3",
+  kebab: "static/sfx/city.mp3",
+};
 
 const sfx = {};
 function loadSfx(name, file) {
@@ -337,44 +347,78 @@ function setGlobalVolume(vol) {
     }
   }
   // Hintergrundmusik ggf. anpassen
-  if (musicGain && audioCtx) {
+  if (locationMusic) {
     try {
-      musicGain.gain.setValueAtTime(0.04 * soundVolume, audioCtx.currentTime);
+      locationMusic.volume = soundVolume * 0.4;
     } catch (e) {
       console.warn("Konnte Musik-Lautstärke nicht setzen:", e);
     }
   }
 }
 
-// Einfache Ambient-Hintergrundmusik über WebAudio
+// Ortsabhängige Ambient-Hintergrundmusik
+function playLocationMusicFor(loc) {
+  if (!musicEnabled || !soundEnabled) return;
+  const file = LOCATION_MUSIC_FILES[loc] || null;
+  if (!file) {
+    // Kein Ambient-Sound für diesen Ort
+    if (locationMusic) {
+      try {
+        locationMusic.pause();
+        locationMusic.currentTime = 0;
+      } catch (e) {}
+    }
+    locationMusic = null;
+    locationMusicLocation = null;
+    return;
+  }
+
+  // Wenn bereits der richtige Track läuft, nur Lautstärke anpassen
+  if (locationMusic && locationMusicLocation === loc) {
+    try {
+      locationMusic.volume = soundVolume * 0.4;
+      if (locationMusic.paused) {
+        const p = locationMusic.play();
+        if (p && p.catch) p.catch(() => {});
+      }
+    } catch (e) {
+      console.warn("Konnte Ortsmusik nicht fortsetzen:", e);
+    }
+    return;
+  }
+
+  // Alten Track stoppen
+  if (locationMusic) {
+    try {
+      locationMusic.pause();
+      locationMusic.currentTime = 0;
+    } catch (e) {}
+  }
+
+  // Neuen Ambient-Track starten
+  locationMusic = new Audio(file);
+  locationMusic.loop = true;
+  locationMusicLocation = loc;
+  try {
+    locationMusic.volume = soundVolume * 0.4;
+    const p = locationMusic.play();
+    if (p && p.catch) p.catch(() => {});
+  } catch (e) {
+    console.warn("Konnte Ortsmusik nicht starten:", e);
+  }
+}
+
 function startBackgroundMusic() {
   if (!musicEnabled || !soundEnabled) return;
-  ensureAudioCtx();
-  if (!audioCtx) return;
-  if (musicOsc) return; // läuft schon
-
-  musicOsc = audioCtx.createOscillator();
-  musicGain = audioCtx.createGain();
-
-  musicOsc.type = "sine";
-  musicOsc.frequency.setValueAtTime(220, audioCtx.currentTime); // tiefer, entspannter Ton
-  musicGain.gain.setValueAtTime(0.04 * soundVolume, audioCtx.currentTime);
-
-  musicOsc.connect(musicGain);
-  musicGain.connect(audioCtx.destination);
-
-  musicOsc.start();
+  playLocationMusicFor(currentLocation);
 }
 
 function stopBackgroundMusic() {
-  if (musicOsc) {
-    try { musicOsc.stop(); } catch (e) {}
-    try { musicOsc.disconnect(); } catch (e) {}
-    musicOsc = null;
-  }
-  if (musicGain) {
-    try { musicGain.disconnect(); } catch (e) {}
-    musicGain = null;
+  if (locationMusic) {
+    try {
+      locationMusic.pause();
+      locationMusic.currentTime = 0;
+    } catch (e) {}
   }
 }
 
@@ -976,6 +1020,7 @@ function applyPlayerToUI() {
   updateInsideButton();
   updateShopUI();
   updateDailyBonusUI();
+  playLocationMusicFor(currentLocation);
 
   // Menü-Einträge für Profil/Orte aktivieren, sobald eingeloggt
   if (menuEntries && menuEntries.length) {
