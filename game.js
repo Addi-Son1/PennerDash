@@ -2370,6 +2370,10 @@ if (dailyBonusClaimBtn) {
 
 
 window.addEventListener("load", () => {
+  // Startzustand: immer Login anzeigen, Spielbereich verstecken
+  if (loginScreen) loginScreen.classList.remove("hidden");
+  if (gameScreen) gameScreen.classList.add("hidden");
+
   const lastName = localStorage.getItem("pennerdash_last_name");
   const lastPin = localStorage.getItem("pennerdash_last_pin");
 
