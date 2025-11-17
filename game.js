@@ -1092,7 +1092,7 @@ function updateShopUI() {
     row.innerHTML = `
       <div class="shop-info">
         <div class="shop-name">${item.name}</div>
-        <div class="shop-meta">${item.price.toFixed(2)} € · Laune +${item.mood} · ${isKebab ? `Hunger -${item.hunger}` : `Durst -${item.thirst ?? item.hunger ?? 0}`}</div>
+        <div class="shop-meta">${item.price.toFixed(2)} € · Laune +${item.mood} · Hunger -${item.hunger}</div>
       </div>
       <button class="small-btn shop-buy-btn" data-item-id="${item.id}">Kaufen</button>
     `;
