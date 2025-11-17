@@ -150,12 +150,6 @@ if (menuEntries && menuEntries.length) {
   });
 }
 
-let audioCtx = null;
-let soundEnabled = true;
-let soundVolume = 0.8;
-
-// Hintergrundmusik (einfacher Ambient-Ton über WebAudio)
-
 // Sound-Toggle
 if (soundToggleBtn) {
   // Lautstärke-Slider
@@ -195,6 +189,10 @@ function xpNeededForLevel(level) {
   return 50 + (level - 1) * 35;
 }
 
+let audioCtx = null;
+let soundEnabled = true;
+let soundVolume = 0.8;
+
 // Hintergrundmusik (einfacher Ambient-Ton über WebAudio)
 let musicEnabled = true;
 let musicOsc = null;
@@ -212,17 +210,12 @@ function loadSfx(name, file) {
   }
 }
 
-// Sounddateien für wichtige Aktionen (Option A Mapping)
-loadSfx("cash",  "static/sfx/cash.mp3");  // Geld kassieren (Pfand abgeben, Loot verkaufen)
-loadSfx("eat",   "static/sfx/eat.mp3");   // Essen / Döner / Snacks
-loadSfx("paper", "static/sfx/paper.mp3"); // Mülltonne / Papierkram / Wühlen
-loadSfx("snore", "static/sfx/snore.mp3"); // Schlafen auf der Parkbank
-loadSfx("warn",  "static/sfx/warn.mp3");  // Warnung / Fehler / Riskante Aktion
-
-// Extra SFX
-loadSfx("step",  "static/sfx/step.mp3");  // Schritte bei Ortswechsel
-loadSfx("loot",  "static/sfx/loot.mp3");  // Item-Fund, Inventar-Loot
-loadSfx("city",  "static/sfx/city.mp3");  // Stadt-/Straßen-Ambiente;
+// Sounddateien für wichtige Aktionen
+loadSfx("cash", "static/sfx/cash.mp3");
+loadSfx("eat", "static/sfx/eat.mp3");
+loadSfx("paper", "static/sfx/paper.mp3");
+loadSfx("snore", "static/sfx/snore.mp3");
+loadSfx("warn", "static/sfx/warn.mp3");
 
 
 
@@ -354,28 +347,61 @@ function setGlobalVolume(vol) {
 }
 
 // Einfache Ambient-Hintergrundmusik über WebAudio
-
 function startBackgroundMusic() {
-  if (!soundEnabled) return;
-  if (!sfx || !sfx["city"]) return;
-  const a = sfx["city"];
-  a.loop = true;
-  a.volume = soundVolume * 0.4;
-  try {
-    a.currentTime = 0;
-    a.play().catch(()=>{});
-  } catch(e){ console.warn(e); }
+  if (!musicEnabled || !soundEnabled) return;
+  ensureAudioCtx();
+  if (!audioCtx) return;
+  if (musicOsc) return; // läuft schon
+
+  musicOsc = audioCtx.createOscillator();
+  musicGain = audioCtx.createGain();
+
+  musicOsc.type = "sine";
+  musicOsc.frequency.setValueAtTime(220, audioCtx.currentTime); // tiefer, entspannter Ton
+  musicGain.gain.setValueAtTime(0.04 * soundVolume, audioCtx.currentTime);
+
+  musicOsc.connect(musicGain);
+  musicGain.connect(audioCtx.destination);
+
+  musicOsc.start();
 }
 
 function stopBackgroundMusic() {
-  if (!sfx || !sfx["city"]) return;
-  try {
-    const a=sfx["city"];
-    a.pause();
-    a.currentTime=0;
-  } catch(e){ console.warn(e); }
+  if (musicOsc) {
+    try { musicOsc.stop(); } catch (e) {}
+    try { musicOsc.disconnect(); } catch (e) {}
+    musicOsc = null;
+  }
+  if (musicGain) {
+    try { musicGain.disconnect(); } catch (e) {}
+    musicGain = null;
+  }
 }
 
+function updateStatus(online) {
+  statusIndicator.textContent = online ? "Online" : "Offline";
+  statusIndicator.classList.toggle("status--online", online);
+  statusIndicator.classList.toggle("status--offline", !online);
+}
+
+async function apiGet(path) {
+  const url = API_BASE_URL + path;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const text = await res.text();
+      const error = new Error("API error " + res.status + ": " + text);
+      error.status = res.status;
+      throw error;
+    }
+    updateStatus(true);
+    return await res.json();
+  } catch (err) {
+    console.error(err);
+    updateStatus(false);
+    throw err;
+  }
+}
 
 async function apiPost(path, body) {
   const url = API_BASE_URL + path;
