@@ -224,18 +224,12 @@ let locationMusic = null;
 let locationMusicLocation = null;
 
 const LOCATION_MUSIC_FILES = {
-  // Park – ruhige Vogelatmosphäre
-  park: "static/sfx/quietbirdparkambience.mp3",
-  // Unterführung (kann später eigenen Sound bekommen)
-  station: null,
-  // Feuerstelle
-  bakery: "static/sfx/fire-crackling.mp3",
-  // Unter der Brücke / Pfandstelle
-  deposit: "static/sfx/underbridge.mp3",
-  // Kneipenviertel
-  city: "static/sfx/bar-sounds.mp3",
-  // Dönerladen (erstmal ohne eigenen Ambience-Sound)
-  kebab: null,
+  park: null,
+  station: "static/sfx/city.mp3",
+  bakery: null,
+  deposit: null,
+  city: "static/sfx/city.mp3",
+  kebab: "static/sfx/city.mp3",
 };
 
 const sfx = {};
@@ -257,13 +251,6 @@ loadSfx("paper", "static/sfx/paper.mp3");
 loadSfx("snore", "static/sfx/snore.mp3");
 loadSfx("warn", "static/sfx/warn.mp3");
 loadSfx("shatter", "static/sfx/glassshatter.mp3");
-
-// Umgebungs-Sounds (werden über LOCATION_MUSIC_FILES als Musik benutzt,
-// hier aber geladen, falls du sie später direkt triggern willst)
-loadSfx("fire", "static/sfx/fire-crackling.mp3");
-loadSfx("park_ambience", "static/sfx/quietbirdparkambience.mp3");
-loadSfx("underbridge", "static/sfx/underbridge.mp3");
-loadSfx("bar", "static/sfx/bar-sounds.mp3");
 
 
 
@@ -812,9 +799,6 @@ function renderInventory() {
     li.appendChild(nameSpan);
     li.appendChild(qtySpan);
 
-    const actionsWrapper = document.createElement("div");
-    actionsWrapper.className = "inventory-actions";
-
     const useBtn = document.createElement("button");
     useBtn.className = "inventory-use-btn";
     useBtn.textContent = "Benutzen";
@@ -824,18 +808,7 @@ function renderInventory() {
     useBtn.addEventListener("click", () => {
       useInventoryItem(item.id);
     });
-    actionsWrapper.appendChild(useBtn);
-
-    const dropBtn = document.createElement("button");
-    dropBtn.className = "inventory-drop-btn";
-    dropBtn.textContent =
-      currentLocation === "deposit" && isInside ? "Verkaufen" : "Wegwerfen";
-    dropBtn.addEventListener("click", () => {
-      dropOrSellInventoryItem(item.id);
-    });
-    actionsWrapper.appendChild(dropBtn);
-
-    li.appendChild(actionsWrapper);
+    li.appendChild(useBtn);
 
     inventoryList.appendChild(li);
   });
@@ -885,59 +858,6 @@ function useInventoryItem(itemId) {
       break;
     }
     default: {
-      // Essen/Trinken aus dem Inventar benutzen
-      const food = kebabShopItems.find((it) => it.id === itemId);
-      const drink = drinkShopItems.find((it) => it.id === itemId);
-
-      if (food) {
-        const moodGain = food.mood || 0;
-        const hungerEffect = food.hunger || 0;
-
-        player.mood = clamp((player.mood || 50) + moodGain, MOOD_MIN, MOOD_MAX);
-        const currentHunger = player.hunger || 0;
-        player.hunger = clamp(currentHunger - hungerEffect, HUNGER_MIN, HUNGER_MAX);
-
-        // Erschöpfung lockern, wenn du ordentlich isst
-        hungryStrikes = 0;
-        if (player.hunger < HUNGER_WARNING && player.thirst < THIRST_WARNING) {
-          isExhausted = false;
-        }
-
-        pushMessage(
-          "Du isst " +
-            food.name +
-            " und fühlst dich etwas besser. (Hunger sinkt, Laune steigt)"
-        );
-        spawnFloatingText("-Hunger", "#4ef58f");
-        playSound("eat");
-        used = true;
-        break;
-      }
-
-      if (drink) {
-        const moodGain = drink.mood || 0;
-        const thirstEffect = drink.thirst ?? drink.hunger ?? 0;
-
-        player.mood = clamp((player.mood || 50) + moodGain, MOOD_MIN, MOOD_MAX);
-        const currentThirst = player.thirst || 0;
-        player.thirst = clamp(currentThirst - thirstEffect, THIRST_MIN, THIRST_MAX);
-
-        thirstyStrikes = 0;
-        if (player.hunger < HUNGER_WARNING && player.thirst < THIRST_WARNING) {
-          isExhausted = false;
-        }
-
-        pushMessage(
-          "Du trinkst " +
-            drink.name +
-            " und dein Durst lässt nach. (Durst sinkt, Laune steigt)"
-        );
-        spawnFloatingText("-Durst", "#4ef58f");
-        playSound("eat");
-        used = true;
-        break;
-      }
-
       pushMessage("Dieses Item kannst du aktuell noch nicht benutzen.");
       break;
     }
@@ -950,66 +870,6 @@ function useInventoryItem(itemId) {
   if (item.qty <= 0) {
     items.splice(idx, 1);
   }
-  player.inventory = items;
-
-  applyPlayerToUI();
-  renderInventory();
-  savePlayer();
-  refreshLeaderboard();
-}
-
-
-
-function dropOrSellInventoryItem(itemId) {
-  if (!player) return;
-  ensurePlayerStructures();
-  const items = player.inventory || [];
-  const idx = items.findIndex((it) => it.id === itemId);
-  if (idx === -1) {
-    pushMessage("Dieses Item ist nicht mehr in deinem Rucksack.");
-    return;
-  }
-  const item = items[idx];
-
-  let sold = false;
-
-  // Beim Pfandmann verkaufen, wenn du unter der Brücke bist
-  if (currentLocation === "deposit" && isInside) {
-    const qty = item.qty || 1;
-    let gain = 0;
-
-    if (item.id === "trash_treasure") {
-      gain = (2 + Math.random() * 4) * qty;
-    } else if (item.id === "lucky_charm") {
-      gain = 1 * qty;
-    } else {
-      // generischer kleiner Wert für andere Items
-      gain = 0.5 * qty;
-    }
-
-    if (gain > 0) {
-      player.money = (player.money || 0) + gain;
-      player.totalMoneyEarned = (player.totalMoneyEarned || 0) + gain;
-      pushMessage(
-        "Du verkaufst " +
-          item.name +
-          " beim Pfandmann für " +
-          gain.toFixed(2) +
-          " €."
-      );
-      spawnFloatingText("+" + gain.toFixed(2) + " €", "#facc15");
-      playSound("cash");
-      sold = true;
-    }
-  }
-
-  if (!sold) {
-    pushMessage("Du wirfst " + item.name + " weg.");
-    playSound("paper");
-  }
-
-  // Item vollständig entfernen
-  items.splice(idx, 1);
   player.inventory = items;
 
   applyPlayerToUI();
@@ -1112,6 +972,15 @@ function updateShopUI() {
 function buyShopItem(shopType, itemId) {
   if (!player) return;
 
+  // Essen/Trinken setzt Erschöpfung-Strikes etwas zurück
+  hungryStrikes = 0;
+  thirstyStrikes = 0;
+  if (player.mood < 40) {
+    player.mood = clamp(player.mood + 5, MOOD_MIN, MOOD_MAX);
+  }
+  if (player.hunger < HUNGER_WARNING && player.thirst < THIRST_WARNING) {
+    isExhausted = false;
+  }
   const items = getShopItemsFor(shopType);
   const item = items.find((it) => it.id === itemId);
   if (!item) return;
@@ -1120,31 +989,29 @@ function buyShopItem(shopType, itemId) {
   const money = player.money || 0;
   if (money < cost) {
     pushMessage("Du hast nicht genug Geld für " + item.name + ".");
-    playSound("warn");
+    playSound("error");
     return;
   }
 
   player.money = money - cost;
 
+  // Laune hoch
+  player.mood = clamp((player.mood || 50) + (item.mood || 0), MOOD_MIN, MOOD_MAX);
+
   const label = shopType === "kebab" ? "Dönerladen" : "Getränkemarkt";
 
-  // Gekaufte Items wandern ins Inventar und können später benutzt werden
-  const icon = shopType === "kebab" ? "🍽️" : "🥤";
-  const description =
-    shopType === "kebab"
-      ? "Kannst du im Inventar essen. Sättigt Hunger und hebt deine Laune."
-      : "Kannst du im Inventar trinken. Löscht Durst und hebt deine Laune.";
-
-  addItemToInventory(item.id, item.name, icon, description);
-
+  // Essen sättigt den Hunger, Getränke löschen den Durst
+  if (shopType === "kebab") {
+    const currentHunger = player.hunger || 0;
+    player.hunger = clamp(currentHunger - (item.hunger || 0), HUNGER_MIN, HUNGER_MAX);
+  } else {
+    const currentThirst = player.thirst || 0;
+    // Fallback: falls alte Saves noch "hunger" auf Getränken haben
+    const thirstEffect = item.thirst ?? item.hunger ?? 0;
+    player.thirst = clamp(currentThirst - thirstEffect, THIRST_MIN, THIRST_MAX);
+  }
   spawnFloatingText("-" + cost.toFixed(2) + " €", "#ffcf40");
-  pushMessage(
-    "Du kaufst im " +
-      label +
-      " " +
-      item.name +
-      " und packst es in deinen Rucksack."
-  );
+  pushMessage("Du kaufst im " + label + " " + item.name + ". Dir geht es etwas besser.");
 
   playSound(shopType === "kebab" ? "eat" : "warn");
 
@@ -1279,7 +1146,7 @@ loginBtn.addEventListener("click", async () => {
     pushMessage("Eingeloggt als " + name + ".");
   } catch (err) {
     console.error(err);
-    playSound("warn");
+    playSound("error");
     if (err.status === 401) {
       alert("PIN stimmt nicht zu diesem Namen.");
     } else {
@@ -1323,7 +1190,7 @@ registerBtn.addEventListener("click", async () => {
     pushMessage("Neuer Account erstellt oder geladen als " + name + ".");
   } catch (err) {
     console.error(err);
-    playSound("warn");
+    playSound("error");
     if (err.status === 401) {
       alert("PIN stimmt nicht zu diesem Namen.");
     } else {
@@ -1386,7 +1253,7 @@ if (forgotPinBtn) {
       localStorage.setItem("pennerdash_last_pin", newPin);
     } catch (err) {
       console.error(err);
-      playSound("warn");
+      playSound("error");
       alert("Konnte PIN nicht zurücksetzen. Bitte frag den Admin oder versuch es später erneut.");
     }
   });
@@ -1491,12 +1358,10 @@ collectBtn.addEventListener("click", async () => {
   if (now - lastSleepAt < SLEEP_COOLDOWN_MS) {
     const remaining = Math.ceil((SLEEP_COOLDOWN_MS - (now - lastSleepAt)) / 1000);
     pushMessage(`Du bist gerade erst aufgewacht. Warte noch ${remaining} Sekunden, bevor du wieder Flaschen sammelst.`);
-    playSound("shatter");
     return;
   }
   if (currentShop) {
     pushMessage("Du kannst im Laden kein Pfand sammeln. Verlass zuerst den Laden.");
-    playSound("shatter");
     return;
   }
   if (!player.dailyBonus) {
@@ -1504,7 +1369,6 @@ collectBtn.addEventListener("click", async () => {
   }
   if ((player.energy ?? 0) <= 0) {
     pushMessage("Du bist zu müde. Geh auf die Parkbank pennen.");
-    playSound("shatter");
     return;
   }
 
@@ -1514,12 +1378,10 @@ collectBtn.addEventListener("click", async () => {
 
   if (hungerVal >= HUNGER_CRITICAL) {
     pushMessage("Dein Magen dreht komplett durch. Iss erstmal etwas beim Dönerladen, bevor du weitersammelst.");
-    playSound("shatter");
     return;
   }
   if (thirstVal >= THIRST_CRITICAL) {
     pushMessage("Du bist viel zu durstig. Hol dir erst etwas zu trinken im Getränkemarkt.");
-    playSound("shatter");
     return;
   }
 
@@ -1722,7 +1584,6 @@ sleepBtn.addEventListener("click", async () => {
   }
   if (currentLocation !== "park") {
     pushMessage("Zum Pennen musst du in den Park gehen.");
-    playSound("warn");
     return;
   }
   playSound("snore");
@@ -1762,7 +1623,6 @@ dumpsterBtn.addEventListener("click", async () => {
   if (now - lastSleepAt < SLEEP_COOLDOWN_MS) {
     const remaining = Math.ceil((SLEEP_COOLDOWN_MS - (now - lastSleepAt)) / 1000);
     pushMessage(`Du bist gerade erst aufgewacht. Warte noch ${remaining} Sekunden, bevor du Mülltonnen durchsuchst.`);
-    playSound("warn");
     return;
   }
   if (!player.dailyBonus) {
@@ -1770,7 +1630,6 @@ dumpsterBtn.addEventListener("click", async () => {
   }
   if ((player.energy ?? 0) <= 0) {
     pushMessage("Du bist zu erschöpft für Mülltonnen-Action.");
-    playSound("warn");
     return;
   }
 
@@ -1780,12 +1639,10 @@ dumpsterBtn.addEventListener("click", async () => {
 
   if (hungerVal >= HUNGER_CRITICAL) {
     pushMessage("Dir ist schlecht vor Hunger. Iss etwas, bevor du weiter in Mülltonnen wühlst.");
-    playSound("warn");
     return;
   }
   if (thirstVal >= THIRST_CRITICAL) {
     pushMessage("Dein Mund ist staubtrocken. Trinke etwas, bevor du weitermachst.");
-    playSound("warn");
     return;
   }
 
@@ -1864,7 +1721,7 @@ dumpsterBtn.addEventListener("click", async () => {
   if (moodDelta >= 0) {
     playSound("success");
   } else {
-    playSound("warn");
+    playSound("error");
   }
 
   lastRiskyAt = Date.now();
@@ -1880,13 +1737,11 @@ riskyBtn.addEventListener("click", async () => {
   if (now - lastSleepAt < SLEEP_COOLDOWN_MS) {
     const remaining = Math.ceil((SLEEP_COOLDOWN_MS - (now - lastSleepAt)) / 1000);
     pushMessage(`Du bist gerade erst aufgewacht. Warte noch ${remaining} Sekunden, bevor du riskante Aktionen machst.`);
-    playSound("warn");
     return;
   }
   if (now - lastRiskyAt < RISKY_COOLDOWN_MS) {
     const remainingRisk = Math.ceil((RISKY_COOLDOWN_MS - (now - lastRiskyAt)) / 1000);
     pushMessage(`Du hast gerade erst eine riskante Aktion versucht. Warte noch ${remainingRisk} Sekunden.`);
-    playSound("warn");
     return;
   }
   if (!player.dailyBonus) {
@@ -1894,7 +1749,6 @@ riskyBtn.addEventListener("click", async () => {
   }
   if ((player.energy ?? 0) <= 0) {
     pushMessage("Du hast keine Energie für riskante Aktionen.");
-    playSound("warn");
     return;
   }
 
@@ -1904,12 +1758,10 @@ riskyBtn.addEventListener("click", async () => {
 
   if (hungerVal >= HUNGER_CRITICAL) {
     pushMessage("In deinem Zustand solltest du keine riskanten Aktionen starten. Iss zuerst etwas.");
-    playSound("warn");
     return;
   }
   if (thirstVal >= THIRST_CRITICAL) {
     pushMessage("Mit diesem Durst schaffst du keine riskante Aktion. Trink vorher etwas.");
-    playSound("warn");
     return;
   }
 
@@ -2012,7 +1864,7 @@ riskyBtn.addEventListener("click", async () => {
   if (moodDelta >= 0) {
     playSound("success");
   } else {
-    playSound("warn");
+    playSound("error");
   }
 
   lastRiskyAt = Date.now();
