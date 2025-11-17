@@ -210,12 +210,17 @@ function loadSfx(name, file) {
   }
 }
 
-// Sounddateien für wichtige Aktionen
-loadSfx("cash", "static/sfx/cash.mp3");
-loadSfx("eat", "static/sfx/eat.mp3");
-loadSfx("paper", "static/sfx/paper.mp3");
-loadSfx("snore", "static/sfx/snore.mp3");
-loadSfx("warn", "static/sfx/warn.mp3");
+// Sounddateien für wichtige Aktionen (Option A Mapping)
+loadSfx("cash",  "static/sfx/cash.mp3");  // Geld kassieren (Pfand abgeben, Loot verkaufen)
+loadSfx("eat",   "static/sfx/eat.mp3");   // Essen / Döner / Snacks
+loadSfx("paper", "static/sfx/paper.mp3"); // Mülltonne / Papierkram / Wühlen
+loadSfx("snore", "static/sfx/snore.mp3"); // Schlafen auf der Parkbank
+loadSfx("warn",  "static/sfx/warn.mp3");  // Warnung / Fehler / Riskante Aktion
+
+// Extra SFX
+loadSfx("step",  "static/sfx/step.mp3");  // Schritte bei Ortswechsel
+loadSfx("loot",  "static/sfx/loot.mp3");  // Item-Fund, Inventar-Loot
+loadSfx("city",  "static/sfx/city.mp3");  // Stadt-/Straßen-Ambiente;
 
 
 
