@@ -971,3 +971,17 @@ input {
 .link-btn:hover {
   color: #ffffff;
 }
+
+
+/* Lautstärke-Regler oben rechts */
+.volume-slider {
+  width: 80px;
+  margin: 0 0.5rem;
+  accent-color: #22c55e;
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  .volume-slider {
+    width: 70px;
+  }
+}

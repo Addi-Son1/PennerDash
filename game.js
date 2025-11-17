@@ -57,6 +57,7 @@ const menuCloseBtn = document.getElementById("menu-close-btn");
 const menuEntries = document.querySelectorAll(".menu-entry");
 
 const soundToggleBtn = document.getElementById("sound-toggle-btn");
+const volumeSlider = document.getElementById("sound-volume");
 
 const dailyBonusSection = document.getElementById("daily-bonus-section");
 const dailyBonusToggleBtn = document.getElementById("daily-bonus-toggle");
@@ -151,10 +152,24 @@ if (menuEntries && menuEntries.length) {
 
 // Sound-Toggle
 if (soundToggleBtn) {
-  soundToggleBtn.addEventListener("click", () => {
+  // Lautstärke-Slider
+if (volumeSlider) {
+  volumeSlider.value = Math.round(soundVolume * 100);
+  volumeSlider.addEventListener("input", (e) => {
+    const v = Number(e.target.value) || 0;
+    setGlobalVolume(v / 100);
+  });
+}
+
+soundToggleBtn.addEventListener("click", () => {
     soundEnabled = !soundEnabled;
     soundToggleBtn.textContent = soundEnabled ? "🔊" : "🔈";
-    playSound("click");
+    if (!soundEnabled) {
+      stopBackgroundMusic();
+    } else {
+      startBackgroundMusic();
+      playSound("click");
+    }
   });
 }
 
@@ -176,13 +191,19 @@ function xpNeededForLevel(level) {
 
 let audioCtx = null;
 let soundEnabled = true;
+let soundVolume = 0.8;
+
+// Hintergrundmusik (einfacher Ambient-Ton über WebAudio)
+let musicEnabled = true;
+let musicOsc = null;
+let musicGain = null;
 
 const sfx = {};
 function loadSfx(name, file) {
   if (typeof Audio === "undefined") return;
   try {
     const a = new Audio(file);
-    a.volume = 0.85;
+    a.volume = soundVolume;
     sfx[name] = a;
   } catch (e) {
     console.warn("Konnte Sound nicht laden:", name, e);
@@ -296,11 +317,65 @@ function playSound(type) {
   gain.connect(audioCtx.destination);
 
   const now = audioCtx.currentTime;
-  gain.gain.setValueAtTime(0.2, now);
+  gain.gain.setValueAtTime(0.2 * soundVolume, now);
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
 
   osc.start(now);
   osc.stop(now + 0.2);
+}
+
+function setGlobalVolume(vol) {
+  soundVolume = Math.max(0, Math.min(1, vol));
+  // Auf alle HTML-Audio-SFX anwenden
+  const values = Object.values(sfx || {});
+  for (const a of values) {
+    if (!a) continue;
+    try {
+      a.volume = soundVolume;
+    } catch (e) {
+      console.warn("Konnte Lautstärke nicht setzen:", e);
+    }
+  }
+  // Hintergrundmusik ggf. anpassen
+  if (musicGain && audioCtx) {
+    try {
+      musicGain.gain.setValueAtTime(0.04 * soundVolume, audioCtx.currentTime);
+    } catch (e) {
+      console.warn("Konnte Musik-Lautstärke nicht setzen:", e);
+    }
+  }
+}
+
+// Einfache Ambient-Hintergrundmusik über WebAudio
+function startBackgroundMusic() {
+  if (!musicEnabled || !soundEnabled) return;
+  ensureAudioCtx();
+  if (!audioCtx) return;
+  if (musicOsc) return; // läuft schon
+
+  musicOsc = audioCtx.createOscillator();
+  musicGain = audioCtx.createGain();
+
+  musicOsc.type = "sine";
+  musicOsc.frequency.setValueAtTime(220, audioCtx.currentTime); // tiefer, entspannter Ton
+  musicGain.gain.setValueAtTime(0.04 * soundVolume, audioCtx.currentTime);
+
+  musicOsc.connect(musicGain);
+  musicGain.connect(audioCtx.destination);
+
+  musicOsc.start();
+}
+
+function stopBackgroundMusic() {
+  if (musicOsc) {
+    try { musicOsc.stop(); } catch (e) {}
+    try { musicOsc.disconnect(); } catch (e) {}
+    musicOsc = null;
+  }
+  if (musicGain) {
+    try { musicGain.disconnect(); } catch (e) {}
+    musicGain = null;
+  }
 }
 
 function updateStatus(online) {
@@ -956,6 +1031,7 @@ loginBtn.addEventListener("click", async () => {
     loginScreen.classList.add("hidden");
     gameScreen.classList.remove("hidden");
     logoutBtn.classList.remove("hidden");
+    startBackgroundMusic();
     playSound("success");
     pushMessage("Eingeloggt als " + name + ".");
   } catch (err) {
@@ -1088,6 +1164,8 @@ if (logoutBtn) {
     // Login-Daten aus dem LocalStorage entfernen
     localStorage.removeItem("pennerdash_last_name");
     localStorage.removeItem("pennerdash_last_pin");
+
+    stopBackgroundMusic();
 
     // UI anpassen
     nameInput.value = "";
