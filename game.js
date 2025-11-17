@@ -644,6 +644,12 @@ function renderInventory() {
     qtySpan.className = "inventory-qty";
     qtySpan.textContent = "x" + (item.qty || 1);
 
+    // Tooltip / Beschreibung auf die ganze Zeile legen
+    const descr = item.description || "";
+    if (descr) {
+      li.title = descr;
+    }
+
     li.appendChild(iconSpan);
     li.appendChild(nameSpan);
     li.appendChild(qtySpan);
@@ -651,6 +657,9 @@ function renderInventory() {
     const useBtn = document.createElement("button");
     useBtn.className = "inventory-use-btn";
     useBtn.textContent = "Benutzen";
+    if (descr) {
+      useBtn.title = descr;
+    }
     useBtn.addEventListener("click", () => {
       useInventoryItem(item.id);
     });
