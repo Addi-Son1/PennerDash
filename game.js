@@ -354,61 +354,28 @@ function setGlobalVolume(vol) {
 }
 
 // Einfache Ambient-Hintergrundmusik über WebAudio
+
 function startBackgroundMusic() {
-  // Nutzt den City-SFX als dezente Hintergrundmusik statt Dauerton-Synth
   if (!soundEnabled) return;
   if (!sfx || !sfx["city"]) return;
   const a = sfx["city"];
+  a.loop = true;
+  a.volume = soundVolume * 0.4;
   try {
-    a.loop = true;
-    a.volume = soundVolume * 0.4;
-    if (a.paused) {
-      a.currentTime = 0;
-      const p = a.play();
-      if (p && p.catch) {
-        p.catch(() => {});
-      }
-    }
-  } catch (e) {
-    console.warn("Konnte Hintergrundsound nicht starten:", e);
-  }
+    a.currentTime = 0;
+    a.play().catch(()=>{});
+  } catch(e){ console.warn(e); }
 }
 
 function stopBackgroundMusic() {
   if (!sfx || !sfx["city"]) return;
-  const a = sfx["city"];
   try {
+    const a=sfx["city"];
     a.pause();
-    a.currentTime = 0;
-  } catch (e) {
-    console.warn("Konnte Hintergrundsound nicht stoppen:", e);
-  }
+    a.currentTime=0;
+  } catch(e){ console.warn(e); }
 }
 
-function updateStatus(online) {
-  statusIndicator.textContent = online ? "Online" : "Offline";
-  statusIndicator.classList.toggle("status--online", online);
-  statusIndicator.classList.toggle("status--offline", !online);
-}
-
-async function apiGet(path) {
-  const url = API_BASE_URL + path;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      const text = await res.text();
-      const error = new Error("API error " + res.status + ": " + text);
-      error.status = res.status;
-      throw error;
-    }
-    updateStatus(true);
-    return await res.json();
-  } catch (err) {
-    console.error(err);
-    updateStatus(false);
-    throw err;
-  }
-}
 
 async function apiPost(path, body) {
   const url = API_BASE_URL + path;
