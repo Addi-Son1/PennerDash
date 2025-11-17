@@ -1797,7 +1797,7 @@ async function refreshLeaderboard() {
     }
 
     let playersHtml =
-      '<div class="leaderboard-row header"><div>#</div><div>Spieler</div><div>Level</div><div>Flaschen</div><div>Geld</div></div>';
+      '<div class="leaderboard-row header"><div>#</div><div>Spieler</div><div>Level</div><div>Flaschen</div></div>';
 
     entries.slice(0, 100).forEach((entry, idx) => {
       const rawName = entry.name || "Penner";
@@ -1812,11 +1812,6 @@ async function refreshLeaderboard() {
 
       const rowClass =
         idx === 0 ? "top1" : idx === 1 ? "top2" : idx === 2 ? "top3" : "";
-
-      const moneyValue =
-        typeof entry.money === "number"
-          ? entry.money
-          : (entry.totalMoneyEarned || 0);
 
       const clanClass = clan && clan.toLowerCase() === "son" ? "clan-tag clan-son" : "clan-tag";
       const tooltip =
@@ -1841,7 +1836,6 @@ async function refreshLeaderboard() {
         </div>
         <div>${entry.level || 1}</div>
         <div>${entry.totalBottles || 0}</div>
-        <div>${moneyValue.toFixed(2)} €</div>
       </div>`;
     });
 
