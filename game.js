@@ -39,10 +39,17 @@ const riskyBtn = document.getElementById("risky-btn");
 const toggleInsideBtn = document.getElementById("toggle-inside-btn");
 const leaderboardContainer = document.getElementById("leaderboard");
 
+
 let lastSleepAt = 0;
 let lastRiskyAt = 0;
 const SLEEP_COOLDOWN_MS = 10_000;
 const RISKY_COOLDOWN_MS = 60_000;
+
+// Hunger/Durst-Strikes: zu lang hungrig/durstig sammeln -> Erschöpfung
+let hungryStrikes = 0;
+let thirstyStrikes = 0;
+let isExhausted = false;
+
 
 const refreshLeaderboardBtn = document.getElementById("refresh-leaderboard-btn");
 const clanCurrentLabel = document.getElementById("clan-current-label");
@@ -95,6 +102,14 @@ const THIRST_MIN = 0;
 const THIRST_MAX = 100;
 const MOOD_MIN = 0;
 const MOOD_MAX = 100;
+
+// Schwellen für Hunger/Durst/Müdigkeit
+const HUNGER_WARNING = 60;
+const HUNGER_CRITICAL = 85;
+const THIRST_WARNING = 60;
+const THIRST_CRITICAL = 85;
+const ENERGY_CRITICAL = 5;
+const MOOD_EXHAUSTED = 20;
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
@@ -235,6 +250,7 @@ loadSfx("eat", "static/sfx/eat.mp3");
 loadSfx("paper", "static/sfx/paper.mp3");
 loadSfx("snore", "static/sfx/snore.mp3");
 loadSfx("warn", "static/sfx/warn.mp3");
+loadSfx("shatter", "static/sfx/glassshatter.mp3");
 
 
 
@@ -955,6 +971,16 @@ function updateShopUI() {
 
 function buyShopItem(shopType, itemId) {
   if (!player) return;
+
+  // Essen/Trinken setzt Erschöpfung-Strikes etwas zurück
+  hungryStrikes = 0;
+  thirstyStrikes = 0;
+  if (player.mood < 40) {
+    player.mood = clamp(player.mood + 5, MOOD_MIN, MOOD_MAX);
+  }
+  if (player.hunger < HUNGER_WARNING && player.thirst < THIRST_WARNING) {
+    isExhausted = false;
+  }
   const items = getShopItemsFor(shopType);
   const item = items.find((it) => it.id === itemId);
   if (!item) return;
@@ -1011,10 +1037,27 @@ function applyPlayerToUI() {
   const hungerValue = player.hunger ?? 0;
   const thirstValue = player.thirst ?? 0;
 
-  energyDisplay.textContent = Math.round(player.energy ?? 0);
+  const energyValue = player.energy ?? 0;
+  const moodValue = player.mood ?? 50;
+
+  energyDisplay.textContent = Math.round(energyValue);
   hungerDisplay.textContent = Math.round(HUNGER_MAX - hungerValue);
   thirstDisplay.textContent = Math.round(THIRST_MAX - thirstValue);
-  moodDisplay.textContent = Math.round(player.mood ?? 50);
+  moodDisplay.textContent = Math.round(moodValue);
+
+  // Warnfarben für niedrige Ressourcen
+  function applyStatClass(el, value, lowThreshold, criticalThreshold) {
+    if (!el) return;
+    el.classList.toggle("stat-low", value >= lowThreshold && value < criticalThreshold);
+    el.classList.toggle("stat-critical", value >= criticalThreshold);
+  }
+
+  // Bei Hunger/Thirst ist hoher Wert schlecht (0 = satt)
+  applyStatClass(hungerDisplay, hungerValue, 60, 85);
+  applyStatClass(thirstDisplay, thirstValue, 60, 85);
+  // Bei Energie/Laune ist niedriger Wert schlecht -> wir drehen Logik um
+  applyStatClass(energyDisplay, 100 - energyValue, 60, 85);
+  applyStatClass(moodDisplay, 100 - moodValue, 60, 85);
 
   const level = player.level || 1;
   const xp = player.xp || 0;
@@ -1329,6 +1372,22 @@ collectBtn.addEventListener("click", async () => {
     return;
   }
 
+  // Hunger/Durst-Logik
+  const hungerVal = player.hunger ?? 0;
+  const thirstVal = player.thirst ?? 0;
+
+  if (hungerVal >= HUNGER_CRITICAL) {
+    pushMessage("Dein Magen dreht komplett durch. Iss erstmal etwas beim Dönerladen, bevor du weitersammelst.");
+    return;
+  }
+  if (thirstVal >= THIRST_CRITICAL) {
+    pushMessage("Du bist viel zu durstig. Hol dir erst etwas zu trinken im Getränkemarkt.");
+    return;
+  }
+
+  if (hungerVal >= HUNGER_WARNING) hungryStrikes++;
+  if (thirstVal >= THIRST_WARNING) thirstyStrikes++;
+
   let found = 1 + Math.floor(Math.random() * 4);
   let xpGain = 5 + Math.floor(Math.random() * 6);
   let energyCost = 10;
@@ -1336,15 +1395,28 @@ collectBtn.addEventListener("click", async () => {
   let bonusText = "";
   let popupText = "";
 
+  // Wenn man zu lange hungrig/durstig sammelt -> Erschöpfung
+  if (hungryStrikes + thirstyStrikes >= 3 || (player.mood ?? 50) <= MOOD_EXHAUSTED) {
+    isExhausted = true;
+  }
+
   // Laune-Effekt
-  if (player.mood > 70) {
+  if (!isExhausted && player.mood > 70) {
     found += 1;
     xpGain += 2;
     bonusText += " (Gute Laune – du bist motivierter!)";
-  } else if (player.mood < 30) {
+  } else if (!isExhausted && player.mood < 30) {
     hungerGain += 3;
     energyCost += 2;
     bonusText += " (Schlechte Laune – alles strengt mehr an.)";
+  }
+
+  // Wenn komplett erschöpft: nur noch Scherben, keine XP
+  if (isExhausted) {
+    found = 0;
+    xpGain = 0;
+    bonusText += " (Erschöpft – du sammelst nur noch Scherben.)";
+    popupText = "💥";
   }
 
   // Orts-Effekte
@@ -1428,11 +1500,17 @@ collectBtn.addEventListener("click", async () => {
   }
 
   if (!popupText) {
-    popupText = "+" + found + " 🍾";
+    popupText = isExhausted ? "💥" : "+" + found + " 🍾";
   }
-  spawnFloatingText(popupText, "#4ef58f");
+  spawnFloatingText(popupText, isExhausted ? "#ff6666" : "#4ef58f");
 
-  if (leveledUp) {
+  if (isExhausted) {
+    playSound("shatter");
+    pushMessage(
+      "Du bist völlig am Ende. Du hörst nur das Klirren zerbrochener Flaschen – nichts Zählbares gefunden." +
+        bonusText
+    );
+  } else if (leveledUp) {
     pushMessage("Level UP! Du bist jetzt Level " + player.level + "!");
     spawnFloatingText("LEVEL UP!", "#ffd56b");
   } else {
@@ -1554,6 +1632,23 @@ dumpsterBtn.addEventListener("click", async () => {
     pushMessage("Du bist zu erschöpft für Mülltonnen-Action.");
     return;
   }
+
+  // Hunger/Durst-Logik
+  const hungerVal = player.hunger ?? 0;
+  const thirstVal = player.thirst ?? 0;
+
+  if (hungerVal >= HUNGER_CRITICAL) {
+    pushMessage("Dir ist schlecht vor Hunger. Iss etwas, bevor du weiter in Mülltonnen wühlst.");
+    return;
+  }
+  if (thirstVal >= THIRST_CRITICAL) {
+    pushMessage("Dein Mund ist staubtrocken. Trinke etwas, bevor du weitermachst.");
+    return;
+  }
+
+  if (hungerVal >= HUNGER_WARNING) hungryStrikes++;
+  if (thirstVal >= THIRST_WARNING) thirstyStrikes++;
+
   playSound("paper");
 
   let energyCost = 12;
@@ -1656,6 +1751,23 @@ riskyBtn.addEventListener("click", async () => {
     pushMessage("Du hast keine Energie für riskante Aktionen.");
     return;
   }
+
+  // Hunger/Durst-Logik
+  const hungerVal = player.hunger ?? 0;
+  const thirstVal = player.thirst ?? 0;
+
+  if (hungerVal >= HUNGER_CRITICAL) {
+    pushMessage("In deinem Zustand solltest du keine riskanten Aktionen starten. Iss zuerst etwas.");
+    return;
+  }
+  if (thirstVal >= THIRST_CRITICAL) {
+    pushMessage("Mit diesem Durst schaffst du keine riskante Aktion. Trink vorher etwas.");
+    return;
+  }
+
+  if (hungerVal >= HUNGER_WARNING) hungryStrikes++;
+  if (thirstVal >= THIRST_WARNING) thirstyStrikes++;
+
   playSound("warn");
 
   const roll = Math.random();

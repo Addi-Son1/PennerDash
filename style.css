@@ -175,6 +175,21 @@ main {
   font-weight: 600;
 }
 
+.stat span.stat-low {
+  color: #ffcf40;
+}
+
+.stat span.stat-critical {
+  color: #ff6b6b;
+  animation: stat-pulse 0.9s infinite;
+}
+
+@keyframes stat-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
 .progress-bar {
   height: 0.5rem;
   background: #222;
