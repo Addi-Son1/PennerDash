@@ -39,6 +39,10 @@ body.bg-deposit {
   background: radial-gradient(circle at top, #8bf5d3 0%, #0b4a3a 45%, #02050a 100%);
 }
 
+body.bg-pfand {
+  background: radial-gradient(circle at top, #d4f0ff 0%, #3b4b63 45%, #050814 100%);
+}
+
 #app {
   width: 100%;
   max-width: 900px;
@@ -254,7 +258,15 @@ main {
   background-image: url("img/deposit.jpg");
 }
 
+.scene-pfand {
+  background-image: url("img/pfandstelle.png");
+}
+
 .scene-city {
+  background-image: url("img/city.jpg");
+}
+
+.scene-gambling {
   background-image: url("img/city.jpg");
 }
 
