@@ -224,16 +224,20 @@ let locationMusic = null;
 let locationMusicLocation = null;
 
 const LOCATION_MUSIC_FILES = {
-  // Park – ruhige Vogelatmosphäre
+// Park – ruhige Vogelatmosphäre
   park: "static/sfx/quietbirdparkambience.mp3",
   // Unterführung (kann später eigenen Sound bekommen)
   station: null,
   // Feuerstelle
   bakery: "static/sfx/fire-crackling.mp3",
-  // Unter der Brücke / Pfandstelle
+  // Unter der Brücke
   deposit: "static/sfx/underbridge.mp3",
+  // Pfandstelle
+  pfand: null,
   // Kneipenviertel
   city: "static/sfx/bar-sounds.mp3",
+  // Gambling Tisch (nutzt vorerst die Bar-Atmosphäre)
+  gambling: "static/sfx/bar-sounds.mp3",
   // Dönerladen (erstmal ohne eigenen Ambience-Sound)
   kebab: null,
 };
@@ -510,18 +514,23 @@ async function apiPost(path, body) {
 
 function displayLocation(locKey) {
   const mapping = {
-    park: "🌳 Park",
+park: "🌳 Park",
     city: "🍺 Kneipenviertel",
     station: "🚇 Unterführung",
     kebab: "🥙 Dönerladen",
     bakery: "🔥 Feuerstelle",
     deposit: "🌉 Unter der Brücke",
+    pfand: "🏧 Pfandstelle",
+    gambling: "🎲 Gambling Tisch",
   };
   return mapping[locKey] || locKey;
 }
 
+  return mapping[locKey] || locKey;
+}
+
 const LOCATION_INFO = {
-  park: {
+park: {
     title: "🌳 Park",
     text: "Im Park kannst du auf der Parkbank schlafen und Energie zurückholen. Hier ist es eher ruhig."
   },
@@ -534,14 +543,22 @@ const LOCATION_INFO = {
     text: "An der Feuerstelle kannst du dich aufwärmen, andere Penner treffen und gemütlich am Feuer sitzen."
   },
   deposit: {
-    title: "🌉 Unter der Brücke (Pfandstelle)",
-    text: "Unter der Brücke gibst du dein Pfand ab und tauschst Flaschen in Geld um. Ohne Flaschen lohnt sich der Weg kaum."
+    title: "🌉 Unter der Brücke",
+    text: "Unter der Brücke kannst du dich ausruhen und Mülltonnen durchsuchen. Der Ort ist laut und nicht ungefährlich."
+  },
+  pfand: {
+    title: "🏧 Pfandstelle",
+    text: "An der Pfandstelle gibst du dein Pfand offiziell ab und tauschst deine gesammelten Flaschen in Geld."
   },
   city: {
     title: "🍺 Kneipenviertel",
     text: "Im Kneipenviertel ist nachts viel los. Riskante Aktionen können hier besonders lukrativ sein – aber auch gefährlich."
   },
-  kebab: {
+  
+  gambling: {
+    title: "🎲 Gambling Tisch",
+    text: "Am Gambling Tisch wagst du besonders riskante Aktionen. Hier kannst du viel gewinnen – oder ordentlich auf die Nase fallen."
+  },kebab: {
     title: "🥙 Dönerladen",
     text: "Im Dönerladen bekommst du später Essen und Snacks, um Hunger zu stillen und deine Laune zu pushen."
   }
@@ -557,27 +574,15 @@ function updateLocationInfo() {
     return;
   }
   locationInfoTitle.textContent = info.title;
-  let text = info.text;
-
-  if (isInside) {
+  let text =   if (isInside) {
     if (currentLocation === "kebab") {
       text += " Du bist im Laden – hier kannst du einkaufen, sobald das Angebot freigeschaltet ist.";
     } else if (currentLocation === "deposit") {
-      text += " Du stehst direkt an der Pfandstelle und kannst deine Flaschen abgeben.";
+      text += " Du suchst dir unter der Brücke einen halbwegs trockenen Platz zum Ausruhen.";
     } else {
       text += " Du befindest dich gerade im Gebäude / Unterschlupf an diesem Ort.";
     }
-  }
-
-  locationInfoText.textContent = text;
-}
-
-function pushMessage(msg) {
-  messageLog.textContent = msg;
-}
-
-/** Loot-Popups */
-function spawnFloatingText(text, color = "#4ef58f") {
+  }ngText(text, color = "#4ef58f") {
   if (!sceneOverlay) return;
   const span = document.createElement("span");
   span.className = "floating-text";
@@ -678,6 +683,9 @@ function applyBackgroundForLocation() {
     case "city":
       body.classList.add("bg-city");
       break;
+    case "gambling":
+      body.classList.add("bg-city");
+      break;
     case "station":
       body.classList.add("bg-station");
       break;
@@ -689,6 +697,9 @@ function applyBackgroundForLocation() {
       break;
     case "deposit":
       body.classList.add("bg-deposit");
+      break;
+    case "pfand":
+      body.classList.add("bg-pfand");
       break;
     case "park":
     default:
@@ -716,8 +727,14 @@ function applySceneImage() {
       case "deposit":
         sceneImage.classList.add("scene-deposit");
         break;
+      case "pfand":
+        sceneImage.classList.add("scene-pfand");
+        break;
       case "city":
         sceneImage.classList.add("scene-city");
+        break;
+      case "gambling":
+        sceneImage.classList.add("scene-gambling");
         break;
       case "kebab":
         sceneImage.classList.add("scene-kebab");
@@ -1674,8 +1691,8 @@ sellBtn.addEventListener("click", async () => {
   if (!player.dailyBonus) {
     player.dailyBonus = { lastClaimDate: null, streak: 0 };
   }
-  if (currentLocation !== "deposit" || !isInside) {
-    pushMessage("Geh unter die Brücke (Pfandstelle), um deine Flaschen abzugeben.");
+  if (currentLocation !== "pfand") {
+    pushMessage("Geh zur Pfandstelle, um deine Flaschen abzugeben.");
     return;
   }
   const bottles = player.bottles || 0;
@@ -1692,7 +1709,7 @@ sellBtn.addEventListener("click", async () => {
   player.mood = clamp((player.mood || 50) + 4, MOOD_MIN, MOOD_MAX);
 
   spawnFloatingText("+" + gain.toFixed(2) + " €", "#ffcf40");
-  pushMessage("Du gibst " + bottles + " Flaschen unter der Brücke für " + gain.toFixed(2) + " € ab.");
+  pushMessage("Du gibst " + bottles + " Flaschen an der Pfandstelle für " + gain.toFixed(2) + " € ab.");
   applyPlayerToUI();
   await savePlayer();
   refreshLeaderboard();
@@ -1720,39 +1737,98 @@ sleepBtn.addEventListener("click", async () => {
   if (!player.dailyBonus) {
     player.dailyBonus = { lastClaimDate: null, streak: 0 };
   }
-  if (currentLocation !== "park") {
-    pushMessage("Zum Pennen musst du in den Park gehen.");
-    playSound("warn");
+
+  // Park: klassisches Pennen auf der Bank
+  if (currentLocation === "park") {
+    playSound("snore");
+    lastSleepAt = Date.now();
+
+    const energyGain = 1 + Math.floor(Math.random() * 10);
+    const hungerGain = 5;
+    player.energy = clamp(
+      (player.energy || 0) + energyGain,
+      0,
+      ENERGY_MAX
+    );
+    player.hunger = clamp(
+      (player.hunger || 0) + hungerGain,
+      HUNGER_MIN,
+      HUNGER_MAX
+    );
+    player.thirst = clamp(
+      (player.thirst || 0) + 3,
+      THIRST_MIN,
+      THIRST_MAX
+    );
+    player.mood = clamp((player.mood || 50) + 3, MOOD_MIN, MOOD_MAX);
+
+    spawnFloatingText("+Energie", "#40cfff");
+    pushMessage("Du pennst auf der Parkbank und fühlst dich etwas erholter.");
+    applyPlayerToUI();
+    await savePlayer();
+    refreshLeaderboard();
     return;
   }
-  playSound("snore");
 
-  lastSleepAt = Date.now();
+  // Unter der Brücke: kurz ausruhen mit Raub-Risiko
+  if (currentLocation === "deposit") {
+    const now = Date.now();
+    if (now - lastSleepAt < SLEEP_COOLDOWN_MS) {
+      const remaining = Math.ceil((SLEEP_COOLDOWN_MS - (now - lastSleepAt)) / 1000);
+      pushMessage(`Du hast dich gerade erst ausgeruht. Warte noch ${remaining} Sekunden, bevor du dich wieder unter der Brücke hinlegst.`);
+      playSound("warn");
+      return;
+    }
 
-  const energyGain = 1 + Math.floor(Math.random() * 10);
-  const hungerGain = 5;
-  player.energy = clamp(
-    (player.energy || 0) + energyGain,
-    0,
-    ENERGY_MAX
-  );
-  player.hunger = clamp(
-    (player.hunger || 0) + hungerGain,
-    HUNGER_MIN,
-    HUNGER_MAX
-  );
-  player.thirst = clamp(
-    (player.thirst || 0) + 3,
-    THIRST_MIN,
-    THIRST_MAX
-  );
-  player.mood = clamp((player.mood || 50) + 3, MOOD_MIN, MOOD_MAX);
+    playSound("snore");
+    lastSleepAt = Date.now();
 
-  spawnFloatingText("+Energie", "#40cfff");
-  pushMessage("Du pennst auf der Parkbank und fühlst dich etwas erholter.");
-  applyPlayerToUI();
-  await savePlayer();
-  refreshLeaderboard();
+    const energyGain = 1 + Math.floor(Math.random() * 5);
+    const hungerGain = 3;
+    const thirstGain = 4;
+
+    player.energy = clamp((player.energy || 0) + energyGain, 0, ENERGY_MAX);
+    player.hunger = clamp((player.hunger || 0) + hungerGain, HUNGER_MIN, HUNGER_MAX);
+    player.thirst = clamp((player.thirst || 0) + thirstGain, THIRST_MIN, THIRST_MAX);
+    player.mood = clamp((player.mood || 50) + 1, MOOD_MIN, MOOD_MAX);
+
+    // Raub-Chance abhängig von der Anzahl der Flaschen
+    const bottles = player.bottles || 0;
+    let robbed = false;
+    if (bottles > 0) {
+      const highBottle = bottles >= 150;
+      const robChance = highBottle ? 0.13 : 0.06; // 6% bei wenigen, 13% bei vielen Flaschen
+      if (Math.random() < robChance) {
+        const maxLoss = highBottle ? Math.min(bottles, 30) : Math.min(bottles, 10);
+        const minLoss = highBottle ? 5 : 1;
+        const lost = Math.max(minLoss, Math.floor(Math.random() * maxLoss));
+        if (lost > 0) {
+          player.bottles = Math.max(0, bottles - lost);
+          robbed = true;
+          spawnFloatingText("-" + lost + " 🍾", "#f97373");
+          pushMessage("Während du unter der Brücke geschlafen hast, hat dir jemand " + lost + " Flaschen geklaut!");
+        }
+      }
+    }
+
+    if (!robbed) {
+      spawnFloatingText("+Energie", "#40cfff");
+      if (bottles > 0) {
+        pushMessage("Du ruhst dich unter der Brücke aus. Es ist laut, aber deine Flaschen sind noch da.");
+      } else {
+        pushMessage("Du ruhst dich unter der Brücke aus. Zum Glück hast du nichts dabei, was man dir klauen könnte.");
+      }
+    }
+
+    applyPlayerToUI();
+    await savePlayer();
+    refreshLeaderboard();
+    return;
+  }
+
+  // Sonst: Hinweis
+  pushMessage("Zum Pennen musst du in den Park oder unter die Brücke gehen.");
+  playSound("warn");
 });
 
 dumpsterBtn.addEventListener("click", async () => {
@@ -1898,6 +1974,12 @@ riskyBtn.addEventListener("click", async () => {
     return;
   }
 
+  if (currentLocation !== "gambling") {
+    pushMessage("Riskante Aktionen gibt es nur am Gambling Tisch im Kneipenviertel (🎲).");
+    playSound("warn");
+    return;
+  }
+
   // Hunger/Durst-Logik
   const hungerVal = player.hunger ?? 0;
   const thirstVal = player.thirst ?? 0;
@@ -1937,7 +2019,7 @@ riskyBtn.addEventListener("click", async () => {
     player.xp = (player.xp || 0) + xpGain;
     moodDelta = 8;
     msg =
-      "Du ziehst eine krasse Aktion durch und kassierst " +
+      "Du ziehst eine krasse Aktion am Gambling Tisch durch und kassierst " +
       bottles +
       " Flaschen und " +
       money.toFixed(2) +
@@ -1968,7 +2050,7 @@ riskyBtn.addEventListener("click", async () => {
     hungerGain += 6;
     moodDelta = -15;
     msg =
-      "Die Polizei kontrolliert dich. Du verlierst " +
+      "Die Polizei kontrolliert dich am Gambling Tisch. Du verlierst " +
       fine.toFixed(2) +
       " € und " +
       lostBottles +
