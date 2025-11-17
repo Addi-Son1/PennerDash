@@ -355,33 +355,33 @@ function setGlobalVolume(vol) {
 
 // Einfache Ambient-Hintergrundmusik über WebAudio
 function startBackgroundMusic() {
-  if (!musicEnabled || !soundEnabled) return;
-  ensureAudioCtx();
-  if (!audioCtx) return;
-  if (musicOsc) return; // läuft schon
-
-  musicOsc = audioCtx.createOscillator();
-  musicGain = audioCtx.createGain();
-
-  musicOsc.type = "sine";
-  musicOsc.frequency.setValueAtTime(220, audioCtx.currentTime); // tiefer, entspannter Ton
-  musicGain.gain.setValueAtTime(0.04 * soundVolume, audioCtx.currentTime);
-
-  musicOsc.connect(musicGain);
-  musicGain.connect(audioCtx.destination);
-
-  musicOsc.start();
+  // Nutzt den City-SFX als dezente Hintergrundmusik statt Dauerton-Synth
+  if (!soundEnabled) return;
+  if (!sfx || !sfx["city"]) return;
+  const a = sfx["city"];
+  try {
+    a.loop = true;
+    a.volume = soundVolume * 0.4;
+    if (a.paused) {
+      a.currentTime = 0;
+      const p = a.play();
+      if (p && p.catch) {
+        p.catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.warn("Konnte Hintergrundsound nicht starten:", e);
+  }
 }
 
 function stopBackgroundMusic() {
-  if (musicOsc) {
-    try { musicOsc.stop(); } catch (e) {}
-    try { musicOsc.disconnect(); } catch (e) {}
-    musicOsc = null;
-  }
-  if (musicGain) {
-    try { musicGain.disconnect(); } catch (e) {}
-    musicGain = null;
+  if (!sfx || !sfx["city"]) return;
+  const a = sfx["city"];
+  try {
+    a.pause();
+    a.currentTime = 0;
+  } catch (e) {
+    console.warn("Konnte Hintergrundsound nicht stoppen:", e);
   }
 }
 
