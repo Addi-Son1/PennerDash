@@ -23,6 +23,7 @@ const moodDisplay = document.getElementById("mood-display");
 const xpBarFill = document.getElementById("xp-bar-fill");
 const energyDisplay = document.getElementById("energy-display");
 const hungerDisplay = document.getElementById("hunger-display");
+const thirstDisplay = document.getElementById("thirst-display");
 const locationDisplay = document.getElementById("location-display");
 const messageLog = document.getElementById("message-log");
 const sceneImage = document.getElementById("scene-image");
@@ -90,6 +91,8 @@ let soundVolume = 0.8;
 const ENERGY_MAX = 100;
 const HUNGER_MIN = 0;
 const HUNGER_MAX = 100;
+const THIRST_MIN = 0;
+const THIRST_MAX = 100;
 const MOOD_MIN = 0;
 const MOOD_MAX = 100;
 
@@ -610,6 +613,7 @@ function defaultPlayer() {
     totalMoneyEarned: 0,
     energy: 100,
     hunger: 30,
+    thirst: 30,
     mood: 50,
     locationStats: {
       park: 0,
@@ -892,14 +896,14 @@ const kebabShopItems = [
 ];
 
 const drinkShopItems = [
-  { id: "drink_beer", name: "Bier", price: 1.50, mood: 1, hunger: 3 },
-  { id: "drink_vodka", name: "Vodka", price: 12.66, mood: 4, hunger: 7 },
-  { id: "drink_wine", name: "Wein", price: 4.77, mood: 4, hunger: 3 },
-  { id: "drink_cola", name: "Cola", price: 2.89, mood: 4, hunger: 2 },
-  { id: "drink_water", name: "Wasser", price: 0.30, mood: 1, hunger: 0 },
-  { id: "drink_tea", name: "Eistee", price: 0.89, mood: 2, hunger: 2 },
-  { id: "drink_energy", name: "Energydrink", price: 2.50, mood: 4, hunger: 1 },
-  { id: "drink_fusel", name: "Pennerglück (Billiger Fusel)", price: 0.57, mood: 1, hunger: 3 }
+  { id: "drink_beer", name: "Bier", price: 1.50, mood: 1, thirst: 3 },
+  { id: "drink_vodka", name: "Vodka", price: 12.66, mood: 4, thirst: 7 },
+  { id: "drink_wine", name: "Wein", price: 4.77, mood: 4, thirst: 3 },
+  { id: "drink_cola", name: "Cola", price: 2.89, mood: 4, thirst: 2 },
+  { id: "drink_water", name: "Wasser", price: 0.30, mood: 1, thirst: 0 },
+  { id: "drink_tea", name: "Eistee", price: 0.89, mood: 2, thirst: 2 },
+  { id: "drink_energy", name: "Energydrink", price: 2.50, mood: 4, thirst: 1 },
+  { id: "drink_fusel", name: "Pennerglück (Billiger Fusel)", price: 0.57, mood: 1, thirst: 3 }
 ];
 
 function getShopItemsFor(type) {
@@ -967,11 +971,19 @@ function buyShopItem(shopType, itemId) {
 
   // Laune hoch
   player.mood = clamp((player.mood || 50) + (item.mood || 0), MOOD_MIN, MOOD_MAX);
-  // Hunger runter (gutes Essen / Trinken = Hunger sinkt)
-  const currentHunger = player.hunger || 0;
-  player.hunger = clamp(currentHunger - (item.hunger || 0), HUNGER_MIN, HUNGER_MAX);
 
   const label = shopType === "kebab" ? "Dönerladen" : "Getränkemarkt";
+
+  // Essen sättigt den Hunger, Getränke löschen den Durst
+  if (shopType === "kebab") {
+    const currentHunger = player.hunger || 0;
+    player.hunger = clamp(currentHunger - (item.hunger || 0), HUNGER_MIN, HUNGER_MAX);
+  } else {
+    const currentThirst = player.thirst || 0;
+    // Fallback: falls alte Saves noch "hunger" auf Getränken haben
+    const thirstEffect = item.thirst ?? item.hunger ?? 0;
+    player.thirst = clamp(currentThirst - thirstEffect, THIRST_MIN, THIRST_MAX);
+  }
   spawnFloatingText("-" + cost.toFixed(2) + " €", "#ffcf40");
   pushMessage("Du kaufst im " + label + " " + item.name + ". Dir geht es etwas besser.");
 
@@ -996,8 +1008,12 @@ function applyPlayerToUI() {
   bottlesDisplay.textContent = player.bottles ?? 0;
   moneyDisplay.textContent = (player.money ?? 0).toFixed(2) + " €";
   xpDisplay.textContent = player.xp ?? 0;
+  const hungerValue = player.hunger ?? 0;
+  const thirstValue = player.thirst ?? 0;
+
   energyDisplay.textContent = Math.round(player.energy ?? 0);
-  hungerDisplay.textContent = Math.round(player.hunger ?? 0);
+  hungerDisplay.textContent = Math.round(HUNGER_MAX - hungerValue);
+  thirstDisplay.textContent = Math.round(THIRST_MAX - thirstValue);
   moodDisplay.textContent = Math.round(player.mood ?? 50);
 
   const level = player.level || 1;
@@ -1395,6 +1411,11 @@ collectBtn.addEventListener("click", async () => {
     HUNGER_MIN,
     HUNGER_MAX
   );
+  player.thirst = clamp(
+    (player.thirst || 0) + hungerGain,
+    THIRST_MIN,
+    THIRST_MAX
+  );
   player.mood = clamp((player.mood || 50) + 1, MOOD_MIN, MOOD_MAX);
 
   let leveledUp = false;
@@ -1503,6 +1524,11 @@ sleepBtn.addEventListener("click", async () => {
     HUNGER_MIN,
     HUNGER_MAX
   );
+  player.thirst = clamp(
+    (player.thirst || 0) + 3,
+    THIRST_MIN,
+    THIRST_MAX
+  );
   player.mood = clamp((player.mood || 50) + 3, MOOD_MIN, MOOD_MAX);
 
   spawnFloatingText("+Energie", "#40cfff");
@@ -1586,6 +1612,11 @@ dumpsterBtn.addEventListener("click", async () => {
     (player.hunger || 0) + hungerGain,
     HUNGER_MIN,
     HUNGER_MAX
+  );
+  player.thirst = clamp(
+    (player.thirst || 0) + hungerGain,
+    THIRST_MIN,
+    THIRST_MAX
   );
   player.mood = clamp((player.mood || 50) + moodDelta, MOOD_MIN, MOOD_MAX);
 
@@ -1694,6 +1725,11 @@ riskyBtn.addEventListener("click", async () => {
     (player.hunger || 0) + hungerGain,
     HUNGER_MIN,
     HUNGER_MAX
+  );
+  player.thirst = clamp(
+    (player.thirst || 0) + hungerGain,
+    THIRST_MIN,
+    THIRST_MAX
   );
   player.mood = clamp((player.mood || 50) + moodDelta, MOOD_MIN, MOOD_MAX);
 
