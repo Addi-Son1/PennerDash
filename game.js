@@ -812,6 +812,9 @@ function renderInventory() {
     li.appendChild(nameSpan);
     li.appendChild(qtySpan);
 
+    const actionsWrapper = document.createElement("div");
+    actionsWrapper.className = "inventory-actions";
+
     const useBtn = document.createElement("button");
     useBtn.className = "inventory-use-btn";
     useBtn.textContent = "Benutzen";
@@ -821,7 +824,18 @@ function renderInventory() {
     useBtn.addEventListener("click", () => {
       useInventoryItem(item.id);
     });
-    li.appendChild(useBtn);
+    actionsWrapper.appendChild(useBtn);
+
+    const dropBtn = document.createElement("button");
+    dropBtn.className = "inventory-drop-btn";
+    dropBtn.textContent =
+      currentLocation === "deposit" && isInside ? "Verkaufen" : "Wegwerfen";
+    dropBtn.addEventListener("click", () => {
+      dropOrSellInventoryItem(item.id);
+    });
+    actionsWrapper.appendChild(dropBtn);
+
+    li.appendChild(actionsWrapper);
 
     inventoryList.appendChild(li);
   });
@@ -871,6 +885,59 @@ function useInventoryItem(itemId) {
       break;
     }
     default: {
+      // Essen/Trinken aus dem Inventar benutzen
+      const food = kebabShopItems.find((it) => it.id === itemId);
+      const drink = drinkShopItems.find((it) => it.id === itemId);
+
+      if (food) {
+        const moodGain = food.mood || 0;
+        const hungerEffect = food.hunger || 0;
+
+        player.mood = clamp((player.mood || 50) + moodGain, MOOD_MIN, MOOD_MAX);
+        const currentHunger = player.hunger || 0;
+        player.hunger = clamp(currentHunger - hungerEffect, HUNGER_MIN, HUNGER_MAX);
+
+        // Erschöpfung lockern, wenn du ordentlich isst
+        hungryStrikes = 0;
+        if (player.hunger < HUNGER_WARNING && player.thirst < THIRST_WARNING) {
+          isExhausted = false;
+        }
+
+        pushMessage(
+          "Du isst " +
+            food.name +
+            " und fühlst dich etwas besser. (Hunger sinkt, Laune steigt)"
+        );
+        spawnFloatingText("-Hunger", "#4ef58f");
+        playSound("eat");
+        used = true;
+        break;
+      }
+
+      if (drink) {
+        const moodGain = drink.mood || 0;
+        const thirstEffect = drink.thirst ?? drink.hunger ?? 0;
+
+        player.mood = clamp((player.mood || 50) + moodGain, MOOD_MIN, MOOD_MAX);
+        const currentThirst = player.thirst || 0;
+        player.thirst = clamp(currentThirst - thirstEffect, THIRST_MIN, THIRST_MAX);
+
+        thirstyStrikes = 0;
+        if (player.hunger < HUNGER_WARNING && player.thirst < THIRST_WARNING) {
+          isExhausted = false;
+        }
+
+        pushMessage(
+          "Du trinkst " +
+            drink.name +
+            " und dein Durst lässt nach. (Durst sinkt, Laune steigt)"
+        );
+        spawnFloatingText("-Durst", "#4ef58f");
+        playSound("eat");
+        used = true;
+        break;
+      }
+
       pushMessage("Dieses Item kannst du aktuell noch nicht benutzen.");
       break;
     }
@@ -883,6 +950,66 @@ function useInventoryItem(itemId) {
   if (item.qty <= 0) {
     items.splice(idx, 1);
   }
+  player.inventory = items;
+
+  applyPlayerToUI();
+  renderInventory();
+  savePlayer();
+  refreshLeaderboard();
+}
+
+
+
+function dropOrSellInventoryItem(itemId) {
+  if (!player) return;
+  ensurePlayerStructures();
+  const items = player.inventory || [];
+  const idx = items.findIndex((it) => it.id === itemId);
+  if (idx === -1) {
+    pushMessage("Dieses Item ist nicht mehr in deinem Rucksack.");
+    return;
+  }
+  const item = items[idx];
+
+  let sold = false;
+
+  // Beim Pfandmann verkaufen, wenn du unter der Brücke bist
+  if (currentLocation === "deposit" && isInside) {
+    const qty = item.qty || 1;
+    let gain = 0;
+
+    if (item.id === "trash_treasure") {
+      gain = (2 + Math.random() * 4) * qty;
+    } else if (item.id === "lucky_charm") {
+      gain = 1 * qty;
+    } else {
+      // generischer kleiner Wert für andere Items
+      gain = 0.5 * qty;
+    }
+
+    if (gain > 0) {
+      player.money = (player.money || 0) + gain;
+      player.totalMoneyEarned = (player.totalMoneyEarned || 0) + gain;
+      pushMessage(
+        "Du verkaufst " +
+          item.name +
+          " beim Pfandmann für " +
+          gain.toFixed(2) +
+          " €."
+      );
+      spawnFloatingText("+" + gain.toFixed(2) + " €", "#facc15");
+      playSound("cash");
+      sold = true;
+    }
+  }
+
+  if (!sold) {
+    pushMessage("Du wirfst " + item.name + " weg.");
+    playSound("paper");
+  }
+
+  // Item vollständig entfernen
+  items.splice(idx, 1);
   player.inventory = items;
 
   applyPlayerToUI();
@@ -985,15 +1112,6 @@ function updateShopUI() {
 function buyShopItem(shopType, itemId) {
   if (!player) return;
 
-  // Essen/Trinken setzt Erschöpfung-Strikes etwas zurück
-  hungryStrikes = 0;
-  thirstyStrikes = 0;
-  if (player.mood < 40) {
-    player.mood = clamp(player.mood + 5, MOOD_MIN, MOOD_MAX);
-  }
-  if (player.hunger < HUNGER_WARNING && player.thirst < THIRST_WARNING) {
-    isExhausted = false;
-  }
   const items = getShopItemsFor(shopType);
   const item = items.find((it) => it.id === itemId);
   if (!item) return;
@@ -1008,23 +1126,25 @@ function buyShopItem(shopType, itemId) {
 
   player.money = money - cost;
 
-  // Laune hoch
-  player.mood = clamp((player.mood || 50) + (item.mood || 0), MOOD_MIN, MOOD_MAX);
-
   const label = shopType === "kebab" ? "Dönerladen" : "Getränkemarkt";
 
-  // Essen sättigt den Hunger, Getränke löschen den Durst
-  if (shopType === "kebab") {
-    const currentHunger = player.hunger || 0;
-    player.hunger = clamp(currentHunger - (item.hunger || 0), HUNGER_MIN, HUNGER_MAX);
-  } else {
-    const currentThirst = player.thirst || 0;
-    // Fallback: falls alte Saves noch "hunger" auf Getränken haben
-    const thirstEffect = item.thirst ?? item.hunger ?? 0;
-    player.thirst = clamp(currentThirst - thirstEffect, THIRST_MIN, THIRST_MAX);
-  }
+  // Gekaufte Items wandern ins Inventar und können später benutzt werden
+  const icon = shopType === "kebab" ? "🍽️" : "🥤";
+  const description =
+    shopType === "kebab"
+      ? "Kannst du im Inventar essen. Sättigt Hunger und hebt deine Laune."
+      : "Kannst du im Inventar trinken. Löscht Durst und hebt deine Laune.";
+
+  addItemToInventory(item.id, item.name, icon, description);
+
   spawnFloatingText("-" + cost.toFixed(2) + " €", "#ffcf40");
-  pushMessage("Du kaufst im " + label + " " + item.name + ". Dir geht es etwas besser.");
+  pushMessage(
+    "Du kaufst im " +
+      label +
+      " " +
+      item.name +
+      " und packst es in deinen Rucksack."
+  );
 
   playSound(shopType === "kebab" ? "eat" : "warn");
 
