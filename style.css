@@ -43,7 +43,6 @@ body.bg-pfand {
   background: radial-gradient(circle at top, #d4f0ff 0%, #3b4b63 45%, #050814 100%);
 }
 
-
 #app {
   width: 100%;
   max-width: 900px;
@@ -262,7 +261,6 @@ main {
 .scene-pfand {
   background-image: url("img/pfandstelle.png");
 }
-
 
 .scene-city {
   background-image: url("img/city.jpg");

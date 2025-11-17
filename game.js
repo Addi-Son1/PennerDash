@@ -236,7 +236,7 @@ const LOCATION_MUSIC_FILES = {
   pfand: null,
   // Kneipenviertel
   city: "static/sfx/bar-sounds.mp3",
-  // Gambling Tisch (nutzt vorerst die Bar-Atmosphäre)
+  // Gambling Tisch (Bar-Atmosphäre)
   gambling: "static/sfx/bar-sounds.mp3",
   // Dönerladen (erstmal ohne eigenen Ambience-Sound)
   kebab: null,
@@ -514,7 +514,7 @@ async function apiPost(path, body) {
 
 function displayLocation(locKey) {
   const mapping = {
-park: "🌳 Park",
+    park: "🌳 Park",
     city: "🍺 Kneipenviertel",
     station: "🚇 Unterführung",
     kebab: "🥙 Dönerladen",
@@ -526,10 +526,7 @@ park: "🌳 Park",
   return mapping[locKey] || locKey;
 }
 
-  return mapping[locKey] || locKey;
-}
-
-const LOCATION_INFO = {
+const LOCATION_INFOconst LOCATION_INFO = {
 park: {
     title: "🌳 Park",
     text: "Im Park kannst du auf der Parkbank schlafen und Energie zurückholen. Hier ist es eher ruhig."
@@ -554,11 +551,7 @@ park: {
     title: "🍺 Kneipenviertel",
     text: "Im Kneipenviertel ist nachts viel los. Riskante Aktionen können hier besonders lukrativ sein – aber auch gefährlich."
   },
-  
-  gambling: {
-    title: "🎲 Gambling Tisch",
-    text: "Am Gambling Tisch wagst du besonders riskante Aktionen. Hier kannst du viel gewinnen – oder ordentlich auf die Nase fallen."
-  },kebab: {
+  kebab: {
     title: "🥙 Dönerladen",
     text: "Im Dönerladen bekommst du später Essen und Snacks, um Hunger zu stillen und deine Laune zu pushen."
   }
@@ -574,7 +567,9 @@ function updateLocationInfo() {
     return;
   }
   locationInfoTitle.textContent = info.title;
-  let text =   if (isInside) {
+  let text = info.text;
+
+  if (isInside) {
     if (currentLocation === "kebab") {
       text += " Du bist im Laden – hier kannst du einkaufen, sobald das Angebot freigeschaltet ist.";
     } else if (currentLocation === "deposit") {
@@ -582,7 +577,17 @@ function updateLocationInfo() {
     } else {
       text += " Du befindest dich gerade im Gebäude / Unterschlupf an diesem Ort.";
     }
-  }ngText(text, color = "#4ef58f") {
+  }
+
+  locationInfoText.textContent = text;
+}
+
+function pushMessage(msg) {
+  messageLog.textContent = msg;
+}
+
+/** Loot-Popups */
+function spawnFloatingText(text, color = "#4ef58f") {
   if (!sceneOverlay) return;
   const span = document.createElement("span");
   span.className = "floating-text";
@@ -1741,6 +1746,7 @@ sleepBtn.addEventListener("click", async () => {
   // Park: klassisches Pennen auf der Bank
   if (currentLocation === "park") {
     playSound("snore");
+
     lastSleepAt = Date.now();
 
     const energyGain = 1 + Math.floor(Math.random() * 10);
@@ -1797,7 +1803,7 @@ sleepBtn.addEventListener("click", async () => {
     let robbed = false;
     if (bottles > 0) {
       const highBottle = bottles >= 150;
-      const robChance = highBottle ? 0.13 : 0.06; // 6% bei wenigen, 13% bei vielen Flaschen
+      const robChance = highBottle ? 0.13 : 0.02; // 2% bei wenigen, 13% bei vielen Flaschen
       if (Math.random() < robChance) {
         const maxLoss = highBottle ? Math.min(bottles, 30) : Math.min(bottles, 10);
         const minLoss = highBottle ? 5 : 1;
@@ -1974,14 +1980,14 @@ riskyBtn.addEventListener("click", async () => {
     return;
   }
 
-  if (currentLocation !== "gambling") {
+  // Hunger/Durst-Logik
+  const hungerVal = player.hunger ?? 0  if (currentLocation !== "gambling") {
     pushMessage("Riskante Aktionen gibt es nur am Gambling Tisch im Kneipenviertel (🎲).");
     playSound("warn");
     return;
   }
 
-  // Hunger/Durst-Logik
-  const hungerVal = player.hunger ?? 0;
+;
   const thirstVal = player.thirst ?? 0;
 
   if (hungerVal >= HUNGER_CRITICAL) {
@@ -2019,7 +2025,7 @@ riskyBtn.addEventListener("click", async () => {
     player.xp = (player.xp || 0) + xpGain;
     moodDelta = 8;
     msg =
-      "Du ziehst eine krasse Aktion am Gambling Tisch durch und kassierst " +
+      "Du ziehst eine krasse Aktion durch und kassierst " +
       bottles +
       " Flaschen und " +
       money.toFixed(2) +
@@ -2050,7 +2056,7 @@ riskyBtn.addEventListener("click", async () => {
     hungerGain += 6;
     moodDelta = -15;
     msg =
-      "Die Polizei kontrolliert dich am Gambling Tisch. Du verlierst " +
+      "Die Polizei kontrolliert dich. Du verlierst " +
       fine.toFixed(2) +
       " € und " +
       lostBottles +
