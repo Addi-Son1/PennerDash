@@ -37,6 +37,12 @@ const dumpsterBtn = document.getElementById("dumpster-btn");
 const riskyBtn = document.getElementById("risky-btn");
 const toggleInsideBtn = document.getElementById("toggle-inside-btn");
 const leaderboardContainer = document.getElementById("leaderboard");
+
+let lastSleepAt = 0;
+let lastRiskyAt = 0;
+const SLEEP_COOLDOWN_MS = 10_000;
+const RISKY_COOLDOWN_MS = 60_000;
+
 const refreshLeaderboardBtn = document.getElementById("refresh-leaderboard-btn");
 const clanCurrentLabel = document.getElementById("clan-current-label");
 const clanInput = document.getElementById("clan-input");
@@ -1288,6 +1294,13 @@ toggleInsideBtn.addEventListener("click", () => {
 
 collectBtn.addEventListener("click", async () => {
   if (!player) return;
+
+  const now = Date.now();
+  if (now - lastSleepAt < SLEEP_COOLDOWN_MS) {
+    const remaining = Math.ceil((SLEEP_COOLDOWN_MS - (now - lastSleepAt)) / 1000);
+    pushMessage(`Du bist gerade erst aufgewacht. Warte noch ${remaining} Sekunden, bevor du wieder Flaschen sammelst.`);
+    return;
+  }
   if (currentShop) {
     pushMessage("Du kannst im Laden kein Pfand sammeln. Verlass zuerst den Laden.");
     return;
@@ -1475,7 +1488,10 @@ sleepBtn.addEventListener("click", async () => {
     return;
   }
   playSound("snore");
-  const energyGain = 40;
+
+  lastSleepAt = Date.now();
+
+  const energyGain = 1 + Math.floor(Math.random() * 10);
   const hungerGain = 5;
   player.energy = clamp(
     (player.energy || 0) + energyGain,
@@ -1498,6 +1514,13 @@ sleepBtn.addEventListener("click", async () => {
 
 dumpsterBtn.addEventListener("click", async () => {
   if (!player) return;
+
+  const now = Date.now();
+  if (now - lastSleepAt < SLEEP_COOLDOWN_MS) {
+    const remaining = Math.ceil((SLEEP_COOLDOWN_MS - (now - lastSleepAt)) / 1000);
+    pushMessage(`Du bist gerade erst aufgewacht. Warte noch ${remaining} Sekunden, bevor du Mülltonnen durchsuchst.`);
+    return;
+  }
   if (!player.dailyBonus) {
     player.dailyBonus = { lastClaimDate: null, streak: 0 };
   }
@@ -1574,6 +1597,8 @@ dumpsterBtn.addEventListener("click", async () => {
   } else {
     playSound("error");
   }
+
+  lastRiskyAt = Date.now();
   applyPlayerToUI();
   await savePlayer();
   refreshLeaderboard();
@@ -1581,6 +1606,18 @@ dumpsterBtn.addEventListener("click", async () => {
 
 riskyBtn.addEventListener("click", async () => {
   if (!player) return;
+
+  const now = Date.now();
+  if (now - lastSleepAt < SLEEP_COOLDOWN_MS) {
+    const remaining = Math.ceil((SLEEP_COOLDOWN_MS - (now - lastSleepAt)) / 1000);
+    pushMessage(`Du bist gerade erst aufgewacht. Warte noch ${remaining} Sekunden, bevor du riskante Aktionen machst.`);
+    return;
+  }
+  if (now - lastRiskyAt < RISKY_COOLDOWN_MS) {
+    const remainingRisk = Math.ceil((RISKY_COOLDOWN_MS - (now - lastRiskyAt)) / 1000);
+    pushMessage(`Du hast gerade erst eine riskante Aktion versucht. Warte noch ${remainingRisk} Sekunden.`);
+    return;
+  }
   if (!player.dailyBonus) {
     player.dailyBonus = { lastClaimDate: null, streak: 0 };
   }
@@ -1681,6 +1718,8 @@ riskyBtn.addEventListener("click", async () => {
   } else {
     playSound("error");
   }
+
+  lastRiskyAt = Date.now();
   applyPlayerToUI();
   await savePlayer();
   refreshLeaderboard();
@@ -1792,7 +1831,11 @@ let lbSort = 'level';
 async function refreshLeaderboard() {
   try {
     const res = await apiGet("/leaderboard");
-    const entries = res.entries || res.leaderboard || res.players || [];
+    const allEntries = res.entries || res.leaderboard || res.players || [];
+    const entries = allEntries.filter((entry) => {
+      const n = (entry.name || "").toLowerCase();
+      return n !== "test" && n !== "addi son";
+    });
     if (!entries.length) {
       leaderboardContainer.innerHTML = '<p class="hint">Noch keine Spieler vorhanden.</p>';
       return;
