@@ -1787,6 +1787,8 @@ function updateDailyBonusUI() {
 }
 
 
+let lbSort = 'level';
+
 async function refreshLeaderboard() {
   try {
     const res = await apiGet("/leaderboard");
@@ -1796,10 +1798,23 @@ async function refreshLeaderboard() {
       return;
     }
 
-    let playersHtml =
-      '<div class="leaderboard-row header"><div>#</div><div>Spieler</div><div>Level</div><div>Flaschen</div></div>';
+    const sortedEntries = [...entries].sort((a, b) => {
+      if (lbSort === 'bottles') {
+        return (b.totalBottles || 0) - (a.totalBottles || 0);
+      }
+      if (lbSort === 'money') {
+        const moneyA = typeof a.money === 'number' ? a.money : (a.totalMoneyEarned || 0);
+        const moneyB = typeof b.money === 'number' ? b.money : (b.totalMoneyEarned || 0);
+        return moneyB - moneyA;
+      }
+      // default: sort by level
+      return (b.level || 1) - (a.level || 1);
+    });
 
-    entries.slice(0, 100).forEach((entry, idx) => {
+let playersHtml =
+      '<div class="leaderboard-row header"><div>#</div><div>Spieler</div><div>Level</div><div>Flaschen</div><div>Geld</div></div>';
+
+    sortedEntries.slice(0, 100).forEach((entry, idx) => {
       const rawName = entry.name || "Penner";
       const { clan, baseName } = parseClanAndName(rawName);
       const initial = baseName.charAt(0).toUpperCase() || rawName.charAt(0).toUpperCase() || "?";
@@ -1812,6 +1827,11 @@ async function refreshLeaderboard() {
 
       const rowClass =
         idx === 0 ? "top1" : idx === 1 ? "top2" : idx === 2 ? "top3" : "";
+
+      const moneyValue =
+        typeof entry.money === "number"
+          ? entry.money
+          : (entry.totalMoneyEarned || 0);
 
       const clanClass = clan && clan.toLowerCase() === "son" ? "clan-tag clan-son" : "clan-tag";
       const tooltip =
@@ -1836,6 +1856,7 @@ async function refreshLeaderboard() {
         </div>
         <div>${entry.level || 1}</div>
         <div>${entry.totalBottles || 0}</div>
+        <div>${moneyValue.toFixed(2)} €</div>
       </div>`;
     });
 
@@ -1884,9 +1905,17 @@ async function refreshLeaderboard() {
     }
 
     leaderboardContainer.innerHTML = `
-      <div class="lb-tabs">
-        <button class="tab-btn tab-btn--active" data-tab="players">Spieler</button>
-        <button class="tab-btn" data-tab="clans">Clans</button>
+      <div class="lb-header-row">
+        <div class="lb-tabs">
+          <button class="tab-btn tab-btn--active" data-tab="players">Spieler</button>
+          <button class="tab-btn" data-tab="clans">Clans</button>
+        </div>
+        <div class="lb-sort">
+          <span class="lb-sort-label">Sortierung:</span>
+          <button class="lb-sort-btn" data-sort="level">Level</button>
+          <button class="lb-sort-btn" data-sort="bottles">Flaschen</button>
+          <button class="lb-sort-btn" data-sort="money">Geld</button>
+        </div>
       </div>
       <div id="lb-players" class="lb-panel lb-panel--active">
         ${playersHtml}
@@ -1914,7 +1943,21 @@ async function refreshLeaderboard() {
         }
       });
     });
-  } catch (err) {
+  
+
+    const sortButtons = leaderboardContainer.querySelectorAll(".lb-sort-btn");
+    sortButtons.forEach((btn) => {
+      const type = btn.dataset.sort;
+      if (type === lbSort) {
+        btn.classList.add("lb-sort-btn--active");
+      }
+      btn.addEventListener("click", () => {
+        if (lbSort === type) return;
+        lbSort = type;
+        refreshLeaderboard();
+      });
+    });
+} catch (err) {
     console.error("Fehler beim Laden der Rangliste:", err);
     leaderboardContainer.innerHTML = '<p class="hint">Fehler beim Laden der Rangliste.</p>';
   }
