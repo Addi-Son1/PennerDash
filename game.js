@@ -634,7 +634,7 @@ function initParallax() {
 
 function defaultPlayer() {
   return {
-    level: 1,
+    level: 0,
     xp: 0,
     bottles: 0,
     money: 0,
@@ -912,27 +912,27 @@ function addItemToInventory(id, name, icon, description) {
 
 
 const kebabShopItems = [
-  { id: "kebab_bread", name: "Aufgewärmtes Brot", price: 3.50, mood: 1, hunger: 2 },
-  { id: "kebab_fries", name: "Pommes", price: 7.50, mood: 5, hunger: 3 },
-  { id: "kebab_doner", name: "Döner", price: 22.50, mood: 10, hunger: 10 },
-  { id: "kebab_lahmacun", name: "Lahmacun", price: 15.50, mood: 9, hunger: 8 },
-  { id: "kebab_pizza", name: "Pizzastück", price: 6.50, mood: 4, hunger: 4 },
-  { id: "kebab_adana", name: "Adana", price: 16.50, mood: 6, hunger: 6 },
-  { id: "kebab_schnitzel", name: "Schnitzel", price: 12.50, mood: 5, hunger: 8 },
-  { id: "kebab_salat", name: "Salat", price: 9.50, mood: 1, hunger: 5 },
-  { id: "kebab_soup", name: "Suppe", price: 5.50, mood: 3, hunger: 7 },
-  { id: "kebab_baklava", name: "Baklava", price: 9.50, mood: 4, hunger: 6 }
+  { id: "kebab_bread", name: "Aufgewärmtes Brot", price: 2.00, mood: 1, hunger: 2 },
+  { id: "kebab_fries", name: "Pommes", price: 3.00, mood: 5, hunger: 3 },
+  { id: "kebab_doner", name: "Döner", price: 4.00, mood: 10, hunger: 10 },
+  { id: "kebab_lahmacun", name: "Lahmacun", price: 3.50, mood: 9, hunger: 8 },
+  { id: "kebab_pizza", name: "Pizzastück", price: 3.00, mood: 4, hunger: 4 },
+  { id: "kebab_adana", name: "Adana", price: 4.50, mood: 6, hunger: 6 },
+  { id: "kebab_schnitzel", name: "Schnitzel", price: 4.00, mood: 5, hunger: 8 },
+  { id: "kebab_salat", name: "Salat", price: 2.50, mood: 1, hunger: 5 },
+  { id: "kebab_soup", name: "Suppe", price: 2.00, mood: 3, hunger: 7 },
+  { id: "kebab_baklava", name: "Baklava", price: 2.50, mood: 4, hunger: 6 }
 ];
 
-const drinkShopItems = [
-  { id: "drink_beer", name: "Bier", price: 1.50, mood: 1, thirst: 3 },
-  { id: "drink_vodka", name: "Vodka", price: 12.66, mood: 4, thirst: 7 },
-  { id: "drink_wine", name: "Wein", price: 4.77, mood: 4, thirst: 3 },
-  { id: "drink_cola", name: "Cola", price: 2.89, mood: 4, thirst: 2 },
-  { id: "drink_water", name: "Wasser", price: 0.30, mood: 1, thirst: 0 },
-  { id: "drink_tea", name: "Eistee", price: 0.89, mood: 2, thirst: 2 },
-  { id: "drink_energy", name: "Energydrink", price: 2.50, mood: 4, thirst: 1 },
-  { id: "drink_fusel", name: "Pennerglück (Billiger Fusel)", price: 0.57, mood: 1, thirst: 3 }
+ const drinkShopItems = [
+  { id: "drink_beer", name: "Bier", price: 1.00, mood: 1, thirst: 3 },
+  { id: "drink_vodka", name: "Vodka", price: 4.00, mood: 4, thirst: 7 },
+  { id: "drink_wine", name: "Wein", price: 2.50, mood: 4, thirst: 3 },
+  { id: "drink_cola", name: "Cola", price: 1.50, mood: 4, thirst: 2 },
+  { id: "drink_water", name: "Wasser", price: 0.20, mood: 1, thirst: 0 },
+  { id: "drink_tea", name: "Eistee", price: 0.80, mood: 2, thirst: 2 },
+  { id: "drink_energy", name: "Energydrink", price: 1.50, mood: 4, thirst: 1 },
+  { id: "drink_fusel", name: "Pennerglück (Billiger Fusel)", price: 0.50, mood: 1, thirst: 3 }
 ];
 
 function getShopItemsFor(type) {
@@ -1043,7 +1043,7 @@ function applyPlayerToUI() {
   ensurePlayerStructures();
 
   nameDisplay.textContent = currentPlayerName || "Spieler";
-  levelDisplay.textContent = "Lv. " + (player.level || 1);
+  levelDisplay.textContent = "Lv. " + (player.level ?? 0);
   bottlesDisplay.textContent = player.bottles ?? 0;
   moneyDisplay.textContent = (player.money ?? 0).toFixed(2) + " €";
   xpDisplay.textContent = player.xp ?? 0;
@@ -1126,6 +1126,19 @@ async function loginOrCreate(name, pin) {
   const res = await apiPost("/login", { name, pin });
   const loaded = res.player || {};
   player = Object.assign(defaultPlayer(), loaded);
+
+  // V7: Einmaliger Soft-Reset für alle Spieler (Level, Geld, Flaschen)
+  if (!player.resetV7Applied) {
+    player.level = 0;
+    player.xp = 0;
+    player.money = 0;
+    player.bottles = 0;
+    player.totalBottles = 0;
+    player.totalMoneyEarned = 0;
+    player.resetV7Applied = true;
+    await savePlayer();
+  }
+
   player.mood = clamp(player.mood ?? 50, MOOD_MIN, MOOD_MAX);
   applyPlayerToUI();
   refreshLeaderboard();
@@ -2027,7 +2040,7 @@ async function refreshLeaderboard() {
         return moneyB - moneyA;
       }
       // default: sort by level
-      return (b.level || 1) - (a.level || 1);
+      return (b.level ?? 0) - (a.level ?? 0);
     });
 
 let playersHtml =
@@ -2073,7 +2086,7 @@ let playersHtml =
             <span>${baseName}</span>
           </span>
         </div>
-        <div>${entry.level || 1}</div>
+        <div>${entry.level ?? 0}</div>
         <div>${entry.totalBottles || 0}</div>
         <div>${moneyValue.toFixed(2)} €</div>
       </div>`;
