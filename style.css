@@ -254,7 +254,15 @@ main {
   background-image: url("img/deposit.jpg");
 }
 
+.scene-pfand {
+  background-image: url("img/pfandstelle.png");
+}
+
 .scene-city {
+  background-image: url("img/city.jpg");
+}
+
+.scene-gambling {
   background-image: url("img/city.jpg");
 }
 
