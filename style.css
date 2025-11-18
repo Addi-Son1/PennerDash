@@ -1,22 +1,79 @@
+/* Grundlayout, damit der Hintergrund nicht weiß ist */
+body {
+    margin: 0;
+    padding: 0;
+    background: #020617;
+    color: #ffffff;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Der große Stadtkarte-Container wie im Screenshot */
 .map-container {
     width: 100%;
-    height: 600px;
+    max-width: 1100px;         /* Breite wie eine Karte */
+    height: 260px;             /* Höhe der Bildbox */
+    margin: 24px auto;         /* Abstand nach oben + zentriert */
     background-size: cover;
-    background-position: center;
+    background-position: center center;
     background-repeat: no-repeat;
-    border-radius: 20px;
-    padding: 20px;
+    border-radius: 24px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
+/* Halbtransparenter Balken oben, damit Text lesbar bleibt */
+.map-container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(15, 23, 42, 0.95),
+        rgba(15, 23, 42, 0.65),
+        transparent
+    );
+    pointer-events: none;
+}
+
+/* Grid für die Orts-Buttons */
 .button-grid {
+    position: relative;        /* damit ::before nicht stört */
+    z-index: 1;                /* über dem Overlay */
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 Spalten, 2 Reihen */
+    gap: 10px;
+    padding: 16px 24px;
 }
 
-button {
-    padding: 14px;
-    border-radius: 10px;
-    border: none;
-    font-size: 16px;
+/* Buttons in der Stadtkarte */
+.button-grid button {
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    font-size: 13px;
+    background: rgba(15, 23, 42, 0.9);
+    color: #e5e7eb;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.1s ease;
+}
+
+/* Hover-Effekt */
+.button-grid button:hover {
+    background: rgba(56, 189, 248, 0.95);
+    color: #0f172a;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.5);
+    transform: translateY(-1px);
+}
+
+/* Aktiver Ort (wenn geklickt) */
+.button-grid button.active {
+    background: rgba(34, 197, 94, 0.95);
+    color: #022c22;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.6);
 }
