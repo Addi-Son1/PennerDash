@@ -5,16 +5,25 @@ const bgImages = {
     pfandstelle: "static/bg-pfand.jpg",
     kneipenviertel: "static/bg-kneipe.jpg",
     bruecke: "static/bg-bruecke.jpg",
-    gambling: "static/bg-gambling.jpg",
+    gambling: "static/bg-gambling.png",
     doener: "static/bg-doener.jpg"
 };
 
 function setBackgroundFor(place) {
     const container = document.getElementById("mapContainer");
-    container.style.backgroundImage = `url('${bgImages[place]}')`;
+    if (!container) return;
+    const img = bgImages[place];
+    if (img) {
+        container.style.backgroundImage = `url('${img}')`;
+    }
 }
 
 function openPlace(place) {
     setBackgroundFor(place);
     console.log("Opened: " + place);
 }
+
+// Standard-Hintergrund beim Laden
+window.addEventListener('DOMContentLoaded', () => {
+    setBackgroundFor('park');
+});

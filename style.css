@@ -1,22 +1,36 @@
+/* Stadtkarte Container */
 .map-container {
     width: 100%;
-    height: 600px;
+    height: 260px;
     background-size: cover;
-    background-position: center;
+    background-position: center center;
     background-repeat: no-repeat;
     border-radius: 20px;
-    padding: 20px;
+    padding: 16px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
 }
 
+/* Grid für die Orts-Buttons innerhalb der Stadtkarte */
 .button-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
 }
 
-button {
-    padding: 14px;
-    border-radius: 10px;
+/* Buttons NUR in der Stadtkarte stylen */
+.button-grid button {
+    padding: 10px 14px;
+    border-radius: 12px;
     border: none;
-    font-size: 16px;
+    font-size: 14px;
+    background: rgba(8, 18, 40, 0.9);
+    color: #ffffff;
+    cursor: pointer;
+}
+
+/* Hover-Effekt */
+.button-grid button:hover {
+    background: rgba(29, 78, 216, 0.95);
 }
