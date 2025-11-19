@@ -2419,7 +2419,7 @@ if (canvasElem) {
     document.addEventListener('dblclick', function(event) {
         event.preventDefault();
     }, { passive: false });
-})(); / PennerDash Frontend v10 mit Szenenbildern, Laune, neuen Aktionen,
+})(); // PennerDash Frontend v10 mit Szenenbildern, Laune, neuen Aktionen,
 // Innenräumen & erweiterten Animationen (Parallax, Loot-Popups, Partikel)
 const API_BASE_URL = "https://penner-server.onrender.com/api";
 
