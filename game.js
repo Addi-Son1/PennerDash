@@ -233,8 +233,7 @@ const LOCATION_MUSIC_FILES = {
   // Unter der Brücke / Pfandstelle
   deposit: "static/sfx/underbridge.mp3",
   // Kneipenviertel
-  city: null,
-  pfandstelle: null,
+  city: "static/sfx/bar-sounds.mp3",
   // Dönerladen (erstmal ohne eigenen Ambience-Sound)
   kebab: null,
 };
@@ -258,10 +257,6 @@ loadSfx("paper", "static/sfx/paper.mp3");
 loadSfx("snore", "static/sfx/snore.mp3");
 loadSfx("warn", "static/sfx/warn.mp3");
 loadSfx("shatter", "static/sfx/glassshatter.mp3");
-loadSfx("paysound", "static/sfx/paysound.mp3");
-loadSfx("supermarket", "static/sfx/supermarket.mp3");
-loadSfx("drinking", "static/sfx/drinking-sound.mp3");
-loadSfx("deposit-machine", "static/sfx/deposit-machine.mp3");
 
 // Umgebungs-Sounds (werden über LOCATION_MUSIC_FILES als Musik benutzt,
 // hier aber geladen, falls du sie später direkt triggern willst)
@@ -521,7 +516,6 @@ function displayLocation(locKey) {
     kebab: "🥙 Dönerladen",
     bakery: "🔥 Feuerstelle",
     deposit: "🌉 Unter der Brücke",
-    pfandstelle: "🟦 Pfandstelle",
   };
   return mapping[locKey] || locKey;
 }
@@ -540,12 +534,8 @@ const LOCATION_INFO = {
     text: "An der Feuerstelle kannst du dich aufwärmen, andere Penner treffen und gemütlich am Feuer sitzen."
   },
   deposit: {
-    title: "🌉 Unter der Brücke",
-    text: "Unter der Brücke kannst du schlafen und Flaschen sammeln – aber es ist gefährlich, laut und nicht wirklich sicher."
-  },
-  pfandstelle: {
-    title: "🟦 Pfandstelle",
-    text: "Hier kannst du deine Pfandflaschen offiziell abgeben und dafür Geld bekommen. Sammeln tust du an anderen Orten."
+    title: "🌉 Unter der Brücke (Pfandstelle)",
+    text: "Unter der Brücke gibst du dein Pfand ab und tauschst Flaschen in Geld um. Ohne Flaschen lohnt sich der Weg kaum."
   },
   city: {
     title: "🍺 Kneipenviertel",
@@ -647,7 +637,7 @@ function defaultPlayer() {
     level: 0,
     xp: 0,
     bottles: 0,
-    money: 500,
+    money: 0,
     totalBottles: 0,
     totalMoneyEarned: 0,
     energy: 100,
@@ -700,9 +690,6 @@ function applyBackgroundForLocation() {
     case "deposit":
       body.classList.add("bg-deposit");
       break;
-    case "pfandstelle":
-      body.classList.add("bg-pfandstelle");
-      break;
     case "park":
     default:
       body.classList.add("bg-park");
@@ -728,9 +715,6 @@ function applySceneImage() {
         break;
       case "deposit":
         sceneImage.classList.add("scene-deposit");
-        break;
-      case "pfandstelle":
-        sceneImage.classList.add("scene-pfandstelle");
         break;
       case "city":
         sceneImage.classList.add("scene-city");
@@ -1024,14 +1008,6 @@ function buyShopItem(shopType, itemId) {
 
   player.money = money - cost;
 
-  // Soundeffekte für Käufe
-  if (shopType === "kebab") {
-    playSound("paysound");
-  } else {
-    playSound("supermarket");
-    playSound("drinking");
-  }
-
   // Laune hoch
   player.mood = clamp((player.mood || 50) + (item.mood || 0), MOOD_MIN, MOOD_MAX);
 
@@ -1155,7 +1131,7 @@ async function loginOrCreate(name, pin) {
   if (!player.resetV7Applied) {
     player.level = 0;
     player.xp = 0;
-    player.money = 500;
+    player.money = 0;
     player.bottles = 0;
     player.totalBottles = 0;
     player.totalMoneyEarned = 0;
@@ -1591,8 +1567,8 @@ sellBtn.addEventListener("click", async () => {
   if (!player.dailyBonus) {
     player.dailyBonus = { lastClaimDate: null, streak: 0 };
   }
-  if (currentLocation !== "pfandstelle" || !isInside) {
-    pushMessage("Geh zur Pfandstelle, um deine Flaschen abzugeben.");
+  if (currentLocation !== "deposit" || !isInside) {
+    pushMessage("Geh unter die Brücke (Pfandstelle), um deine Flaschen abzugeben.");
     return;
   }
   const bottles = player.bottles || 0;
@@ -1600,7 +1576,7 @@ sellBtn.addEventListener("click", async () => {
     pushMessage("Du hast keine Flaschen zum Abgeben.");
     return;
   }
-  playSound("deposit-machine");
+  playSound("cash");
   const pricePerBottle = 0.25;
   const gain = bottles * pricePerBottle;
   player.bottles = 0;
@@ -1609,7 +1585,7 @@ sellBtn.addEventListener("click", async () => {
   player.mood = clamp((player.mood || 50) + 4, MOOD_MIN, MOOD_MAX);
 
   spawnFloatingText("+" + gain.toFixed(2) + " €", "#ffcf40");
-  pushMessage("Du gibst " + bottles + " Flaschen an der Pfandstelle für " + gain.toFixed(2) + " € ab.");
+  pushMessage("Du gibst " + bottles + " Flaschen unter der Brücke für " + gain.toFixed(2) + " € ab.");
   applyPlayerToUI();
   await savePlayer();
   refreshLeaderboard();
@@ -2673,8 +2649,7 @@ const LOCATION_MUSIC_FILES = {
   // Unter der Brücke / Pfandstelle
   deposit: "static/sfx/underbridge.mp3",
   // Kneipenviertel
-  city: null,
-  pfandstelle: null,
+  city: "static/sfx/bar-sounds.mp3",
   // Dönerladen (erstmal ohne eigenen Ambience-Sound)
   kebab: null,
 };
@@ -2698,10 +2673,6 @@ loadSfx("paper", "static/sfx/paper.mp3");
 loadSfx("snore", "static/sfx/snore.mp3");
 loadSfx("warn", "static/sfx/warn.mp3");
 loadSfx("shatter", "static/sfx/glassshatter.mp3");
-loadSfx("paysound", "static/sfx/paysound.mp3");
-loadSfx("supermarket", "static/sfx/supermarket.mp3");
-loadSfx("drinking", "static/sfx/drinking-sound.mp3");
-loadSfx("deposit-machine", "static/sfx/deposit-machine.mp3");
 
 // Umgebungs-Sounds (werden über LOCATION_MUSIC_FILES als Musik benutzt,
 // hier aber geladen, falls du sie später direkt triggern willst)
@@ -2961,7 +2932,6 @@ function displayLocation(locKey) {
     kebab: "🥙 Dönerladen",
     bakery: "🔥 Feuerstelle",
     deposit: "🌉 Unter der Brücke",
-    pfandstelle: "🟦 Pfandstelle",
   };
   return mapping[locKey] || locKey;
 }
@@ -2980,12 +2950,8 @@ const LOCATION_INFO = {
     text: "An der Feuerstelle kannst du dich aufwärmen, andere Penner treffen und gemütlich am Feuer sitzen."
   },
   deposit: {
-    title: "🌉 Unter der Brücke",
-    text: "Unter der Brücke kannst du schlafen und Flaschen sammeln – aber es ist gefährlich, laut und nicht wirklich sicher."
-  },
-  pfandstelle: {
-    title: "🟦 Pfandstelle",
-    text: "Hier kannst du deine Pfandflaschen offiziell abgeben und dafür Geld bekommen. Sammeln tust du an anderen Orten."
+    title: "🌉 Unter der Brücke (Pfandstelle)",
+    text: "Unter der Brücke gibst du dein Pfand ab und tauschst Flaschen in Geld um. Ohne Flaschen lohnt sich der Weg kaum."
   },
   city: {
     title: "🍺 Kneipenviertel",
@@ -3087,7 +3053,7 @@ function defaultPlayer() {
     level: 0,
     xp: 0,
     bottles: 0,
-    money: 500,
+    money: 0,
     totalBottles: 0,
     totalMoneyEarned: 0,
     energy: 100,
@@ -3140,9 +3106,6 @@ function applyBackgroundForLocation() {
     case "deposit":
       body.classList.add("bg-deposit");
       break;
-    case "pfandstelle":
-      body.classList.add("bg-pfandstelle");
-      break;
     case "park":
     default:
       body.classList.add("bg-park");
@@ -3168,9 +3131,6 @@ function applySceneImage() {
         break;
       case "deposit":
         sceneImage.classList.add("scene-deposit");
-        break;
-      case "pfandstelle":
-        sceneImage.classList.add("scene-pfandstelle");
         break;
       case "city":
         sceneImage.classList.add("scene-city");
@@ -3464,14 +3424,6 @@ function buyShopItem(shopType, itemId) {
 
   player.money = money - cost;
 
-  // Soundeffekte für Käufe
-  if (shopType === "kebab") {
-    playSound("paysound");
-  } else {
-    playSound("supermarket");
-    playSound("drinking");
-  }
-
   // Laune hoch
   player.mood = clamp((player.mood || 50) + (item.mood || 0), MOOD_MIN, MOOD_MAX);
 
@@ -3595,7 +3547,7 @@ async function loginOrCreate(name, pin) {
   if (!player.resetV7Applied) {
     player.level = 0;
     player.xp = 0;
-    player.money = 500;
+    player.money = 0;
     player.bottles = 0;
     player.totalBottles = 0;
     player.totalMoneyEarned = 0;
@@ -4031,8 +3983,8 @@ sellBtn.addEventListener("click", async () => {
   if (!player.dailyBonus) {
     player.dailyBonus = { lastClaimDate: null, streak: 0 };
   }
-  if (currentLocation !== "pfandstelle" || !isInside) {
-    pushMessage("Geh zur Pfandstelle, um deine Flaschen abzugeben.");
+  if (currentLocation !== "deposit" || !isInside) {
+    pushMessage("Geh unter die Brücke (Pfandstelle), um deine Flaschen abzugeben.");
     return;
   }
   const bottles = player.bottles || 0;
@@ -4040,7 +3992,7 @@ sellBtn.addEventListener("click", async () => {
     pushMessage("Du hast keine Flaschen zum Abgeben.");
     return;
   }
-  playSound("deposit-machine");
+  playSound("cash");
   const pricePerBottle = 0.25;
   const gain = bottles * pricePerBottle;
   player.bottles = 0;
@@ -4049,7 +4001,7 @@ sellBtn.addEventListener("click", async () => {
   player.mood = clamp((player.mood || 50) + 4, MOOD_MIN, MOOD_MAX);
 
   spawnFloatingText("+" + gain.toFixed(2) + " €", "#ffcf40");
-  pushMessage("Du gibst " + bottles + " Flaschen an der Pfandstelle für " + gain.toFixed(2) + " € ab.");
+  pushMessage("Du gibst " + bottles + " Flaschen unter der Brücke für " + gain.toFixed(2) + " € ab.");
   applyPlayerToUI();
   await savePlayer();
   refreshLeaderboard();
