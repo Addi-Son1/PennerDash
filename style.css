@@ -23,6 +23,11 @@ body.bg-city {
   background: radial-gradient(circle at top, #ff8a5c 0%, #3b1745 40%, #06010f 100%);
 }
 
+
+body.bg-pfandstelle {
+  background: radial-gradient(circle at top, #6fd6ff 0%, #004466 40%, #02030a 100%);
+}
+
 body.bg-station {
   background: radial-gradient(circle at top, #4ecbff 0%, #003b6b 40%, #020414 100%);
 }
@@ -260,6 +265,10 @@ main {
 
 .scene-kebab {
   background-image: url("img/kebab.jpg");
+}
+
+.scene-pfandstelle {
+  background-image: url("img/pfandstelle.jpg");
 }
 
 .scene-image.scene-enter-inside {
