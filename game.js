@@ -940,16 +940,7 @@ const kebabShopItems = [
   { id: "kebab_baklava", name: "Baklava", price: 2.50, mood: 4, hunger: 6 }
 ];
 
-const drinkShopItems = [
-  { id: "drink_beer", name: "Bier", price: 1.50, mood: 1, thirst: 3 },
-  { id: "drink_vodka", name: "Vodka", price: 12.66, mood: 4, thirst: 7 },
-  { id: "drink_wine", name: "Wein", price: 4.77, mood: 4, thirst: 3 },
-  { id: "drink_cola", name: "Cola", price: 2.89, mood: 4, thirst: 2 },
-  { id: "drink_water", name: "Wasser", price: 0.30, mood: 1, thirst: 0 },
-  { id: "drink_tea", name: "Eistee", price: 0.89, mood: 2, thirst: 2 },
-  { id: "drink_energy", name: "Energydrink", price: 2.50, mood: 4, thirst: 1 },
-  { id: "drink_fusel", name: "Pennerglück (Billiger Fusel)", price: 0.57, mood: 1, thirst: 3 }
-];
+
 
 function getShopItemsFor(type) {
   return type === "kebab" ? kebabShopItems : drinkShopItems;
@@ -2429,16 +2420,7 @@ if (canvasElem) {
     document.addEventListener('dblclick', function(event) {
         event.preventDefault();
     }, { passive: false });
-})(); const drinkShopItems = [
-  { id: "drink_beer", name: "Bier", price: 1.00, mood: 1, thirst: 3 },
-  { id: "drink_vodka", name: "Vodka", price: 4.00, mood: 4, thirst: 7 },
-  { id: "drink_wine", name: "Wein", price: 2.50, mood: 4, thirst: 3 },
-  { id: "drink_cola", name: "Cola", price: 1.50, mood: 4, thirst: 2 },
-  { id: "drink_water", name: "Wasser", price: 0.20, mood: 1, thirst: 0 },
-  { id: "drink_tea", name: "Eistee", price: 0.80, mood: 2, thirst: 2 },
-  { id: "drink_energy", name: "Energydrink", price: 1.50, mood: 4, thirst: 1 },
-  { id: "drink_fusel", name: "Pennerglück (Billiger Fusel)", price: 0.50, mood: 1, thirst: 3 }
-];/ PennerDash Frontend v10 mit Szenenbildern, Laune, neuen Aktionen,
+})(); / PennerDash Frontend v10 mit Szenenbildern, Laune, neuen Aktionen,
 // Innenräumen & erweiterten Animationen (Parallax, Loot-Popups, Partikel)
 const API_BASE_URL = "https://penner-server.onrender.com/api";
 
@@ -3380,16 +3362,7 @@ const kebabShopItems = [
   { id: "kebab_baklava", name: "Baklava", price: 9.50, mood: 4, hunger: 6 }
 ];
 
-const drinkShopItems = [
-  { id: "drink_beer", name: "Bier", price: 1.50, mood: 1, thirst: 3 },
-  { id: "drink_vodka", name: "Vodka", price: 12.66, mood: 4, thirst: 7 },
-  { id: "drink_wine", name: "Wein", price: 4.77, mood: 4, thirst: 3 },
-  { id: "drink_cola", name: "Cola", price: 2.89, mood: 4, thirst: 2 },
-  { id: "drink_water", name: "Wasser", price: 0.30, mood: 1, thirst: 0 },
-  { id: "drink_tea", name: "Eistee", price: 0.89, mood: 2, thirst: 2 },
-  { id: "drink_energy", name: "Energydrink", price: 2.50, mood: 4, thirst: 1 },
-  { id: "drink_fusel", name: "Pennerglück (Billiger Fusel)", price: 0.57, mood: 1, thirst: 3 }
-];
+
 
 function getShopItemsFor(type) {
   return type === "kebab" ? kebabShopItems : drinkShopItems;
